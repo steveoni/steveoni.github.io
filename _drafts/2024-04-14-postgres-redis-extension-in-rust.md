@@ -22,11 +22,13 @@ categories: database
 
 ## Objective
 
-The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store.
+The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store. 
 
 ![](../_assets/_images/postgres-redis/scope.png)
 
 The main scope is to track any update to a specific table, e.g. using the image above, We have a table with three columns `id`, `title`, and `description`. Let's assume we want to track this table and build a Redis store where column `title` values are the keys and column `description` values will be the Redis values
+
+**Note**: this article will be more about Postgres than Rust, hence you are meant to have at least an idea about rust.
 
 ```sql
 Update Test SET description = 'animal fox' where title = 'Fox'
@@ -1164,5 +1166,33 @@ Once all that is done we can now, initialize our extension
 ```sh
 $ cargo pgrx run pg14
 
+postgres_redis=# create extension postgres_redis;
+CREATE EXTENSION
 
 ```
+
+In the same terminal context let's update a table
+
+```sh
+postgres_redis=# update test set description= 'updated for redis test' where title='Fox';
+UPDATE 1
+```
+
+To confirm that everything is done properly, let's check if redis contains the key value. We should expect redis should have a key `Fox` and a value `updated for redis test`
+
+```sh
+$ redis-cli
+
+127.0.0.1:6379> GET Fox
+"updated for redis test"
+```
+
+## Conclusion
+
+This being my first Rust and postgres extension, there was a lot to learn, especially when threading between C and Rust, learned a lot about foreign function interface (FFI), how to cast between pointers, and the like. This article only focuses on the postgres part and assumes you the reader have a rust knowledge. 
+
+We were able to delve into postgres and touch some of its internals; we got to see how to fetch updated tuples from postgres, how to convert Datum to the actual value, how to handle query statements and fetch data within query expressions.
+
+Well, we never get to talk about handling select, to know more about that visit my colleague's blog here.
+
+The code source is available [here](https://github.com/systemEng-Learning/postgres-redis)
