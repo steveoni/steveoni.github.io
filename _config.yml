@@ -1,0 +1,12 @@
+url: https://steveoni.github.io/
+theme: minima
+title: Steveoni's Blog
+author: Stephen Oni
+description: A novice's dance amidst  binary symphony
+minima:
+  skin: dark
+
+twitter_username: steveoni
+github_username: steveoni
+email: stephenoni2@gmail.com
+show_excerpts: true
