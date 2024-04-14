@@ -7,18 +7,16 @@ categories: database
 
 **Table of Contents**
 
-1.  General scope of the project with some images
+1.  Install Pgrx and Postgres db
+2.  Setting up custom variables using GUC
+3.  Postgres Hook
+4.  Obtaining Redis key- Planner Hook
 
-2.  Install Pgrx and Postgres db
-3.  Talks about hooks and their basic setup
-4.  Setting up custom variables using GUC
-5.  Obtaining Redis key- Planner Hook
+5.  Obtaining Redis value - Executor end
 
-6.  Obtaining Redis value - Executor end
+6.  Background writer and shared memory
 
-7.  Background writer and shared memory
-
-8.  Running the code
+7.  Running the code
 
 ## Objective
 
