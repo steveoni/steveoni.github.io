@@ -1,12 +1,11 @@
 ---
 layout: post
 title: "Postgres-redis Extension in Rust"
-date: 2024-04-14
+date: 2024-04-15
 categories: database
 ---
 
-
-The main objective of this [project](https://github.com/systemEng-Learning/postgres-redis) was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store. 
+The main objective of this [project](https://github.com/systemEng-Learning/postgres-redis) was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store.
 
 ![](../_assets/_images/postgres-redis/scope.png)
 
@@ -24,7 +23,6 @@ the following are the main criteria:
 2. identify the columns in the table that will serve as the Redis keys and values
 3. whenever we have an update query that has our table in it and the where clause contains our key column, obtain the update and send it to redis
 
-
 **Table of Contents**
 
 1.  Install Pgrx and Postgres db
@@ -37,7 +35,6 @@ the following are the main criteria:
 6.  Background writer and shared memory
 
 7.  Running the code
-
 
 ## Install Pgrx and Postgres db
 
@@ -1188,7 +1185,7 @@ $ redis-cli
 
 ## Conclusion
 
-This being my first Rust and postgres extension, there was a lot to learn, especially when threading between C and Rust, I learned a lot about foreign function interface (FFI), how to cast between pointers and the like. This article only focuses on the postgres part and assumes you the reader have a rust knowledge. 
+This being my first Rust and postgres extension, there was a lot to learn, especially when threading between C and Rust, I learned a lot about foreign function interface (FFI), how to cast between pointers and the like. This article only focuses on the postgres part and assumes you the reader have a rust knowledge.
 
 We were able to delve into postgres and touch some of its internals; we got to see how to fetch updated tuples from postgres, convert Datum to the actual value, and handle query statements, and fetch data within query expressions.
 
