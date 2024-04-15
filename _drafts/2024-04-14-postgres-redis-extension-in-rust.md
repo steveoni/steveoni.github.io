@@ -5,22 +5,8 @@ date: 2024-04-14
 categories: database
 ---
 
-**Table of Contents**
 
-1.  Install Pgrx and Postgres db
-2.  Setting up custom variables using GUC
-3.  Postgres Hook
-4.  Obtaining Redis key- Planner Hook
-
-5.  Obtaining Redis value - Executor end
-
-6.  Background writer and shared memory
-
-7.  Running the code
-
-## Objective
-
-The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store. 
+The main objective of this [project](https://github.com/systemEng-Learning/postgres-redis) was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store. 
 
 ![](../_assets/_images/postgres-redis/scope.png)
 
@@ -37,6 +23,21 @@ the following are the main criteria:
 1. identify the table to be tracked e.g `test`
 2. identify the columns in the table that will serve as the Redis keys and values
 3. whenever we have an update query that has our table in it and the where clause contains our key column, obtain the update and send it to redis
+
+
+**Table of Contents**
+
+1.  Install Pgrx and Postgres db
+2.  Setting up custom variables using GUC
+3.  Postgres Hook
+4.  Obtaining Redis key- Planner Hook
+
+5.  Obtaining Redis value - Executor end
+
+6.  Background writer and shared memory
+
+7.  Running the code
+
 
 ## Install Pgrx and Postgres db
 
@@ -1062,7 +1063,7 @@ pub unsafe extern "C" fn _PG_init() {
 }
 ```
 
-recall that in `src/prshmem.rs` we wrote a function `init_redis_buffer` to initialize shared memory without new type. in \_PG_init we make a call to it and also we create a Background worker with the name `PGRedis Experiment` and then we set the function this BackgroundWriter should manage which is `postgres_redis_background`.
+recall that in `src/prshmem.rs` we wrote a function `init_redis_buffer` to initialize shared memory without a new type. in \_PG_init we make a call to it and also we create a Background worker with the name `PGRedis Experiment` and then we set the function this BackgroundWriter should manage which is `postgres_redis_background`.
 
 We also make a call to `set_library`; this notifies the name of the shared library where the function managed by the background writer exists in. We then call `.load` to register the background writer and start it when needed
 
@@ -1176,7 +1177,7 @@ postgres_redis=# update test set description= 'updated for redis test' where tit
 UPDATE 1
 ```
 
-To confirm that everything is done properly, let's check if redis contains the key value. We should expect redis should have a key `Fox` and a value `updated for redis test`
+To confirm that everything is done properly, let's check if redis contains the key value. We should expect redis to have a key `Fox` and a value `updated for redis test`
 
 ```sh
 $ redis-cli
@@ -1187,10 +1188,10 @@ $ redis-cli
 
 ## Conclusion
 
-This being my first Rust and postgres extension, there was a lot to learn, especially when threading between C and Rust, learned a lot about foreign function interface (FFI), how to cast between pointers, and the like. This article only focuses on the postgres part and assumes you the reader have a rust knowledge. 
+This being my first Rust and postgres extension, there was a lot to learn, especially when threading between C and Rust, I learned a lot about foreign function interface (FFI), how to cast between pointers and the like. This article only focuses on the postgres part and assumes you the reader have a rust knowledge. 
 
-We were able to delve into postgres and touch some of its internals; we got to see how to fetch updated tuples from postgres, how to convert Datum to the actual value, how to handle query statements and fetch data within query expressions.
+We were able to delve into postgres and touch some of its internals; we got to see how to fetch updated tuples from postgres, convert Datum to the actual value, and handle query statements, and fetch data within query expressions.
 
-Well, we never get to talk about handling select, to know more about that visit my colleague's blog here.
+Well, we never get to talk about handling select queries. To know about that and some of the retrospective designs for this project visit this [link](https://systemeng-learning.github.io/database/postgres-redis/)
 
 The code source is available [here](https://github.com/systemEng-Learning/postgres-redis)
