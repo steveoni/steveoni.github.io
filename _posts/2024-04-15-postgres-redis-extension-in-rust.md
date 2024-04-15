@@ -7,7 +7,7 @@ categories: database
 
 The main objective of this [project](https://github.com/systemEng-Learning/postgres-redis) was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store.
 
-![](../assets/images/postgres-redis/scope.png)
+<img src="/assets/images/postgres-redis/scope.png">
 
 The main scope is to track any update to a specific table, e.g. using the image above, We have a table with three columns `id`, `title`, and `description`. Let's assume we want to track this table and build a Redis store where column `title` values are the keys and column `description` values will be the Redis values
 
