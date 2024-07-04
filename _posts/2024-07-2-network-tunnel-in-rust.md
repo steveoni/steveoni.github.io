@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Building Network tunnel in Rust"
-date: 2024-04-15
+date: 2024-07-05
 categories: network
 ---
 
@@ -11,11 +11,11 @@ This article is a simple note on what i understood so far and its better illustr
 
 ## Tun Interface
 
-For simple illustration i will start with using the OSI layer to show how the data flows
+For simple illustration, i will start with using the OSI layer to show how the data flows
 
 <img src="/assets/images/network-tunnel/osi.png">
 
-Each of our operating system do have a network device interface and virtual network interface, this can be viewed by either using `ip` command or `ifconfig`
+Each of our operating systems, do have a network device interface and virtual network interface, this can be viewed by either using `ip` command or `ifconfig`
 
 ```shell
 $ ip addr
@@ -35,7 +35,7 @@ $ ip addr
 
 The above shows the loopback (lo) virtual nertwork interface used to manage localhost connection. Also we have `en0` this a network device inteface used to manage ethernet connection, macOs represent them with `en0` and on linux os they are represented as `eth0`.
 
-The `eth0` interface is assigned the ip address assign to us by the router using DHCP, and the mac address associated to this inteface is the physical NIC address.
+The `eth0` interface is assigned the ip address assign to us by the router using DHCP, and the mac address associated to this interface is the physical NIC address.
 
 We also have a routing table
 
@@ -50,21 +50,21 @@ default via 192.168.0.1 dev en0
 
 This tells our device how to handle outgoing and incoming packet and what interface should be used to handle them. for example `default via 192.168.0.1 dev en0`; shows that any packet whose destination network isn't specifically known should be sent to `en0` and `en0` is linked to my router at `192.168.0.1`, hence packet reaching `en0` will be sent to the router.
 
-Hence packet leaving `en0` or `eth0` interface will concpetually look like the image below, if we are to communicate with twitter
+Packet leaving `en0` or `eth0` interface will concpetually look like the image below, if we are to communicate with twitter
 
 <img src="/assets/images/network-tunnel/osi1.png">
 
-Also you can conceptualize network interface as points where packets or frames are sent and can be handled either by the kernel or user space.
+Also you can conceptualize network interface as points where packets or frames are sent and can then be handled either by the kernel or user space.
 
-Having that as our basic of network virtual and device interface; we are not limited to only those specfic interface, we have the capacity to create ours, and thats where tunneling comes in.
+Having that as our basics for network virtual and device interface; we are not limited to only those specific interfaces, we have the capacity to create ours, and that is where tunneling comes in.
 
 <img src="/assets/images/network-tunnel/tun.png">
 
-The image above demarcate the osi layer into **user-pace** and **kernel-space**, in simple term it means space you, as a user have control over and the later means space manage by the operating system internals.
+The image above demarcates the osi layer into **user-pace** and **kernel-space**, in simple terms it means space you, as a user have control over and the latter means space managed by the operating system internals.
 
-tun interface is attached to Network layer and tap is attached to Data link layer, this helps to capture packet and frames to which user space can have access to.
+Tun interface is attached to the Network layer and the Tap is connected to the Data link layer, this helps to capture packets and frames to which user space can have access to.
 
-Focusing on tun interface let see how we can set that up:
+Focusing on tun interface let's see how we can set that up:
 
 ```shell
 # create a un interface
@@ -78,7 +78,7 @@ $ sudo ip link set dev tun0 up
 
 ```
 
-Checking our list of interface to see if the tun interface is added
+Checking our list of interfaces to see if the tun interface is listed
 
 ```shell
 $ ip addr
@@ -99,7 +99,7 @@ $ ip addr
        valid_lft forever preferred_lft forever
 ```
 
-The tun device is now added to the list of interface, but now its just there it does nothing
+The tun device is added to the list of interfaces, but now it's just there it is does nothing.
 
 ```shewl
 
@@ -133,14 +133,14 @@ let fd = match unsafe { open(b"/dev/net/tun\0".as_ptr() as *const _, O_RDWR) } {
         };
 ```
 
-the file name is `/dev/net/tun`, we read the file and then have a descriptor assigned to a variable `fd`. Well the tun is not created yet, it need some ohter tools to make it possible to configure and spin up tun with code and they are:
+the file name is `/dev/net/tun`, we read the file and then have a descriptor assigned to a variable `fd`. Well, the tun is not created yet, it need some ohter tools to make it possible to configure and spin up tun with our program and they are:
 
 1. File descriptor from `/dev/net /tun`
 2. Socket: this helps to target the kernel network stack
 3. ioctl : syscall to manipulate the underlying device parameters of special files
 4. ifreq: socket interface used to configure network device interface.
 
-To create tun interface and then configure the tun device like we did using the `ip` command, we would first need to associate the `fd` descriptor created with the a network interface, this to ensure that every network packet routed to the network interface will be directed to the file descriptor.
+To create tun interface and then configure the tun device like we did using the `ip` command, we would first need to associate the `fd` descriptor created with the network interface, this to ensure that every network packet routed to the network interface will be directed to the file descriptor.
 
 To enable that, we need to set the ifreq struct has shown below:
 
@@ -166,7 +166,7 @@ struct ifreq {
 
 ```
 
-For associating a file descriptor with the tun interface we only need to set the name
+For associating a file descriptor with the tun interface we only need to set the ifreq name
 
 ```rust
 // create a memory space for type ifreq initalized with zero
@@ -233,7 +233,7 @@ Before we close this chapter of tun interface, what happens if the tun interface
 
 <img src="/assets/images/network-tunnel/vpn.png">
 
-The image above shows the whole flow from pinging doamin like twitter to sending it over to our server and then to the internet.
+The image above shows the whole flow from pinging a domain like twitter to sending it over to our server and then to the internet.
 
 ```rust
  loop {
@@ -289,13 +289,13 @@ The image below shows the basic flow of the packet from client to server
 
 <img src="/assets/images/network-tunnel/vpnflow.png">
 
-The Udp data sent from the client is wrapped in a circle to show that the client can decide to encrypt the data and the server on recieving the data use the neccessary key to decrypt the data and then send over to the internet. For example wireguard make use of Diffie-Hellman to agreed on the keys used to decrypt and encrypt the packet being sent.
+The Udp data sent from the client is wrapped in a circle to show that the client can decide to encrypt the data and the server on recieving the data use the neccessary key to decrypt the data and then send over to the internet. For example wireguard make use of Diffie-Hellman to agreed on the keys used to decrypt and encrypt the packet being sent and recieved.
 
 ## Localhost Tunneling
 
 <img src="/assets/images/network-tunnel/localhost.png">
 
-In simple term, it is a technique of exposing your local server or service to the internet or another network. for example we can make the service rendered b`localhost:3200` in a client network to be accessible in another network via `localhost:3000`.
+In simple term, it is a technique of exposing your local server or service to the internet or another network. for example we can make the service rendered via `localhost:3200` in a client network to be accessible in another network via `localhost:3000`.
 
 The image below shows a basic flow of how that works
 
@@ -437,9 +437,9 @@ loop {
 }
 ```
 
-The code above shows the basic structure of how Tcpstream from the client is piped into the Server localhost Tcpstream. that means what is available in client localhost:3200 is accesbile on the server and if you visit `localhost:3000` in the server broswer you should see client data.
+The code above shows the basic structure of how Tcpstream from the client is piped into the Server localhost Tcpstream. that means what is available in client `localhost:3200` is accesbile on the server and if you visit `localhost:3000` in the server browser you should see client data.
 
-This example does not contained error handling and reconnection. Check [here](https://github.com/systemEng-Learning/simple-wireguard/blob/main/tunnel-indocker/localhost-tunnel/src/main.rs) for the full code. Also reading this code should give you insight into how [bore](https://github.com/ekzhang/bore) works. the only difference is that bore manage authenctication, persistent connection and make use of asynchronous rust.
+This example does not contain error handling and reconnection. Check [here](https://github.com/systemEng-Learning/simple-wireguard/blob/main/tunnel-indocker/localhost-tunnel/src/main.rs) for the full code. Also reading this code should give you insight into how [bore](https://github.com/ekzhang/bore) works. the only difference is that bore manage authenctication, persistent connection and make use of asynchronous rust.
 
 ## Conclusion
 
