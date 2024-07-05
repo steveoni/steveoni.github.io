@@ -447,14 +447,14 @@ The article shows the basic structure of a vpn and localhost network tunnel. it 
 
 ## Code
 
-**Tunneling** : https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/vpn
+**Tunneling** : [https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/vpn](https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/vpn)
 
-**Localhost tunneling**: https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/localhost-tunnel
+**Localhost tunneling**: [https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/localhost-tunnel](https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/localhost-tunnel)
 
 ## References
 
-- Rustun https://github.com/meh/rust-tun
-- bore https://github.com/ekzhang/bore
-- wireguard-go https://github.com/WireGuard/wireguard-go
-- boringtun https://github.com/cloudflare/boringtun
-- VPN Tun/Tap and sockets, routing, tunnels and TLS https://www.youtube.com/watch?v=XKV0fSxrCmg&t=2314s
+- Rustun [https://github.com/meh/rust-tun](https://github.com/meh/rust-tun)
+- bore [https://github.com/ekzhang/bore](https://github.com/ekzhang/bore)
+- wireguard-go [https://github.com/WireGuard/wireguard-go](https://github.com/ekzhang/bore)
+- boringtun [https://github.com/cloudflare/boringtun](https://github.com/cloudflare/boringtun)
+- VPN Tun/Tap and sockets, routing, tunnels and TLS [https://www.youtube.com/watch?v=XKV0fSxrCmg&t=2314s](https://www.youtube.com/watch?v=XKV0fSxrCmg&t=2314s)
