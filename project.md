@@ -28,7 +28,7 @@ An extension that sync postgres with redis using postgres internal mechanism. Ai
 
 ---
 
-[ScatteredNote](https://github.com/scatteredNote) - `Creator`
+**[ScatteredNote](https://github.com/scatteredNote)** - `Creator`
 
 *`Javascript`, `Nodejs`, `Vscode`, `chrome extension`*
 
@@ -36,7 +36,7 @@ simple ui to grab content and take note easily: enabling querying note intellige
 
 ---
 
-[Kbar](https://github.com/timc1/kbar) - `Contributor`
+**[Kbar](https://github.com/timc1/kbar)** - `Contributor`
 
 *`Typescript`, `React`*
 
@@ -52,7 +52,7 @@ CKAN is an open-source DMS (data management system) for powering data hubs and d
 
 ---
 
-**[DataCook]()** - `Contributor`
+**[DataCook](https://imgcook.github.io/datacook/en/)** - `Contributor`
 
 *`Typescript`, `Tensorflow.js`*
 
@@ -70,6 +70,6 @@ A wasm export for libsvm It allows you to directly run & train svm model in js e
 
 **[Danfojs](https://github.com/javascriptdata/danfojs)** - `Co-creator`
 
-*`Typrscript`, `Nodejs`*
+*`Typescript`, `Nodejs`*
 
 Danfo.js is a javascript package (with over **4.9k &#9733;**) that provides fast, flexible, and expressive data structures designed to make working with "relational" or "labeled" data both easy and intuitive. It is heavily inspired by Pandas library, and provides a similar API. This means that users familiar with Pandas, can easily pick up danfo.js.
