@@ -12,7 +12,6 @@ A simple edge worker /Function as a service (FAAS). Main aim is to learn more ab
 
 ---
 
-
 **[Go-ml Deployment](https://github.com/systemEng-Learning/go-ml-deployment)** - `Co-creator`
 
 *`Go`, `Protobuf`, `Onnx`*
@@ -43,6 +42,8 @@ simple ui to grab content and take note easily: enabling querying note intellige
 
 Fast, portable, and extensible cmd+k interface for your site
 
+---
+
 **[CKAN](https://github.com/ckan/ckan)** - `Contributor`
 
 *`Python`*
@@ -51,7 +52,7 @@ CKAN is an open-source DMS (data management system) for powering data hubs and d
 
 ---
 
-**[DataCook]()** | `Contributor`
+**[DataCook]()** - `Contributor`
 
 *`Typescript`, `Tensorflow.js`*
 
