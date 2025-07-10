@@ -2,7 +2,7 @@
 layout: post
 title: "Notes on Building a Minimal VM-Based Job Runner with Firecracker"
 date: 2025-07-07
-categories: network microvm firecracker
+categories: microvm
 ---
 
 
