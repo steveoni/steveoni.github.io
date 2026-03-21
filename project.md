@@ -136,4 +136,4 @@ groups:
             url: "https://kbar.vercel.app/"
 ---
 
-Most of the projects listed here are open source, giving me the opportunity to explore and share knowledge with a community of people interested in similar topics. II have explored topics and ideas around data publishing and orchestration, data science on the web, networking, interfaces, browser and IDE extensions, system programming, and more.
+Most of the projects listed here are open source, giving me the opportunity to explore and share knowledge with a community of people interested in similar topics. I have explored topics and ideas around data publishing and orchestration, data science on the web, networking, interfaces, browser and IDE extensions, system programming, and more.
