@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Writing · Stephen Oni</title>
+  <meta name="description" content="A novice's dance amidst binary symphony" />
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Writing | Stephen Oni</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Writing" />
+<meta name="author" content="Stephen Oni" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A novice’s dance amidst binary symphony" />
+<meta property="og:description" content="A novice’s dance amidst binary symphony" />
+<link rel="canonical" href="http://localhost:4000/blog/" />
+<meta property="og:url" content="http://localhost:4000/blog/" />
+<meta property="og:site_name" content="Stephen Oni" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Writing" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","author":{"@type":"Person","name":"Stephen Oni"},"description":"A novice’s dance amidst binary symphony","headline":"Writing","url":"http://localhost:4000/blog/"}</script>
+<!-- End Jekyll SEO tag -->
+
+  <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── tokens ───────────────────────────────────────────── */
+    :root {
+      --bg:        #0e0e10;
+      --surface:   #141416;
+      --border:    #222226;
+      --text:      #e8e8e4;
+      --muted:     #888884;
+      --subtle:    #444440;
+      --accent:    #a8c5a0;   /* sage green — calm, natural */
+      --link:      #a8c5a0;
+      --link-hover:#c8e5c0;
+      --code-bg:   #131315;
+      --max-w:     680px;
+    }
+
+    /* ── reset ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── nav ──────────────────────────────────────────────── */
+    .site-nav {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .site-nav .brand {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+    .site-nav .brand a { color: inherit; }
+    .site-nav .brand a:hover { text-decoration: none; color: var(--accent); }
+    .site-nav .links { display: flex; gap: 1.75rem; }
+    .site-nav .links a {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .site-nav .links a:hover { color: var(--text); text-decoration: none; }
+    .site-nav .links a.active { color: var(--text); }
+
+    /* ── main content ─────────────────────────────────────── */
+    main {
+      max-width: var(--max-w);
+      margin: 3.5rem auto 5rem;
+      padding: 0 1.5rem;
+    }
+
+    /* ── footer ───────────────────────────────────────────── */
+    .site-footer {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .site-footer p { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links { display: flex; gap: 1.25rem; }
+    .site-footer .footer-links a { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── typography ───────────────────────────────────────── */
+    h1 { font-size: 1.6rem; font-weight: 500; line-height: 1.25; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    h2 { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+         color: var(--muted); margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1rem; font-weight: 500; margin: 1.25rem 0 0.4rem; }
+    h4 { font-size: 0.9rem; font-weight: 500; color: var(--muted); margin: 1rem 0 0.3rem; }
+    p  { margin: 0.75rem 0; color: var(--text); }
+    ul, ol { margin: 0.75rem 0 0.75rem 1.4rem; }
+    li { margin-bottom: 0.3rem; }
+
+    blockquote {
+      border-left: 2px solid var(--subtle);
+      padding: 0.3rem 1rem;
+      color: var(--muted);
+      margin: 1.25rem 0;
+      font-style: italic;
+    }
+
+    code {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    pre {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+    /* ── syntax highlighting (Rouge — custom dark) ────────── */
+    .highlight          { background: var(--code-bg); border-radius: 8px; border: 1px solid var(--border); margin: 1.25rem 0; overflow-x: auto; }
+    .highlight pre      { background: none; border: none; border-radius: 0; margin: 0; padding: 1.1rem 1.25rem; }
+
+    /* language label pill */
+    .highlight[data-lang]::before {
+      content: attr(data-lang);
+      display: block;
+      font-size: 0.68rem;
+      font-family: "DM Mono", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--subtle);
+      padding: 0.5rem 1.25rem 0;
+    }
+
+    /* token colours — readable on dark bg, WCAG AA compliant */
+    .highlight .c,  .highlight .cm, .highlight .c1, .highlight .cs  { color: #6a8060; font-style: italic; }  /* comments — muted sage */
+    .highlight .k,  .highlight .kd, .highlight .kn, .highlight .kp,
+    .highlight .kr, .highlight .kt                                   { color: #c792ea; }  /* keywords — soft violet */
+    .highlight .n,  .highlight .nb, .highlight .ni, .highlight .nl,
+    .highlight .nn, .highlight .nx                                   { color: #c3c3be; }  /* names — near-white */
+    .highlight .na                                                   { color: #82aaff; }  /* attr names — sky blue */
+    .highlight .nf, .highlight .fm, .highlight .py                  { color: #82aaff; }  /* function names — sky blue */
+    .highlight .nc, .highlight .nd, .highlight .ne                  { color: #ffcb6b; }  /* class/decorator — amber */
+    .highlight .s,  .highlight .s1,.highlight .s2, .highlight .sb,
+    .highlight .sc, .highlight .sd, .highlight .sh, .highlight .si,
+    .highlight .sx, .highlight .sr, .highlight .ss                  { color: #c3e88d; }  /* strings — soft lime */
+    .highlight .m,  .highlight .mf, .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il                                   { color: #f78c6c; }  /* numbers — warm orange */
+    .highlight .o,  .highlight .ow                                   { color: #89ddff; }  /* operators — ice blue */
+    .highlight .p,  .highlight .pi                                   { color: #89ddff; }  /* punctuation */
+    .highlight .err                                                   { color: #ff5572; background: none; }  /* errors */
+    .highlight .ge  { font-style: italic; }
+    .highlight .gs  { font-weight: bold; }
+    .highlight .cp                                                    { color: #ffcb6b; }  /* preprocessor — amber */
+    .highlight .gh, .highlight .gu                                   { color: var(--muted); font-weight: bold; }  /* diff headings */
+    .highlight .gd                                                    { color: #ff5572; background: rgba(255,85,114,0.08); display: block; }  /* diff deleted */
+    .highlight .gi                                                    { color: #c3e88d; background: rgba(195,232,141,0.08); display: block; }  /* diff inserted */
+
+    /* line numbers if enabled */
+    .highlight .gl { color: var(--subtle); padding-right: 1.2rem; user-select: none; }
+
+    img { max-width: 100%; border-radius: 8px; margin: 1.25rem 0; display: block; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--surface); color: var(--muted); font-weight: 500; }
+
+    /* ── divider label ────────────────────────────────────── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 3rem 0 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+  </style>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W9SDX6RR77"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-W9SDX6RR77');
+</script>
+
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="brand"><a href="/">Stephen Oni</a></div>
+    <div class="links">
+      <a href="/" >home</a>
+      <a href="/blog" class="active">writing</a>
+      <a href="/project" >projects</a>
+    </div>
+  </nav>
+
+  <main>
+    <style>
+  /* ── blog page header ─────────────────────────────────── */
+  .blog-header {
+    margin-bottom: 3rem;
+  }
+  .blog-header h1 {
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.5rem;
+  }
+  .blog-header p {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  /* ── post list ────────────────────────────────────────── */
+  .post-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .post-list-item {
+    padding: 1.35rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-list-item:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .post-list-item .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .post-list-item .post-date {
+    font-size: 0.78rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .post-list-item .post-category {
+    font-size: 0.68rem;
+    font-family: "DM Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+  .post-list-item h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+    margin: 0 0 0.4rem;
+    line-height: 1.35;
+  }
+  .post-list-item h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .post-list-item h2 a:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .post-list-item .post-excerpt {
+    font-size: 0.875rem;
+    color: var(--muted);
+    line-height: 1.65;
+    margin: 0;
+    /* clamp to 3 lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .post-list-item .read-more {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    transition: color 0.15s;
+  }
+  .post-list-item .read-more:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* ── empty state ──────────────────────────────────────── */
+  .no-posts {
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 2rem 0;
+  }
+</style>
+
+<div class="blog-header">
+  <h1>Writing</h1>
+  <p>Notes and essays on systems programming, infrastructure, and things I find interesting.</p>
+  <p>You can find all my Machine/Deep learning writings <a href="https://medium.com/@steveoni" target="_blank">here</a>.</p>
+</div>
+
+<p class="section-label">All Posts</p>
+
+
+  <ul class="post-list">
+    
+    <li class="post-list-item">
+      <div class="post-meta">
+        <span class="post-date">2025-07-07</span>
+        
+        <span class="post-category">microvm</span>
+        
+      </div>
+      <h2><a href="/microvm/notes-on-simple-vm-bases-job-runner/">Notes on Building a Minimal VM-Based Job Runner with Firecracker</a></h2>
+      
+      <p class="post-excerpt">The beauty of working on a small project like this is how effective it is at refreshing your knowledge, helping you understand what it takes to build a reliable product, and giving you intuition or a high-level overview of new...</p>
+      
+      <a class="read-more" href="/microvm/notes-on-simple-vm-bases-job-runner/">read more →</a>
+    </li>
+    
+    <li class="post-list-item">
+      <div class="post-meta">
+        <span class="post-date">2024-07-05</span>
+        
+        <span class="post-category">network</span>
+        
+      </div>
+      <h2><a href="/network/network-tunnel-in-rust/">Building Network tunnel in Rust</a></h2>
+      
+      <p class="post-excerpt">It all started from picking up wireguard white paper and trying to setup wireguard and see how it works.New words and concept here and there, then decided to build a simple network tunnel in rust just to understand some of...</p>
+      
+      <a class="read-more" href="/network/network-tunnel-in-rust/">read more →</a>
+    </li>
+    
+    <li class="post-list-item">
+      <div class="post-meta">
+        <span class="post-date">2024-04-15</span>
+        
+        <span class="post-category">database</span>
+        
+      </div>
+      <h2><a href="/database/postgres-redis-extension-in-rust/">Postgres-redis Extension in Rust</a></h2>
+      
+      <p class="post-excerpt">The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our...</p>
+      
+      <a class="read-more" href="/database/postgres-redis-extension-in-rust/">read more →</a>
+    </li>
+    
+  </ul>
+
+
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 Stephen Oni</p>
+    <div class="footer-links">
+      <a href="https://github.com/steveoni" target="_blank" rel="noopener">github</a>
+      <a href="https://twitter.com/steveoni" target="_blank" rel="noopener">twitter</a>
+      <a href="https://linkedin.com/in/stephen-oni" target="_blank" rel="noopener">linkedin</a>
+      <a href="mailto:stephenoni2@gmail.com">email</a>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+---
+layout: default
+---
+<style>
+  /* ── hero ─────────────────────────────────────────────── */
+  .hero { margin-bottom: 3.5rem; }
+  .hero h1 {
+    font-size: 1.75rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+  .hero h1 span { color: var(--muted); font-weight: 300; }
+  .hero .bio {
+    font-size: 1rem;
+    color: var(--muted);
+    line-height: 1.8;
+    max-width: 560px;
+  }
+  .hero .bio a { color: var(--accent); }
+  .hero .bio a:hover { color: var(--link-hover); }
+  .hero .social {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
+  .hero .social a {
+    font-size: 0.82rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .hero .social a:hover {
+    color: var(--text);
+    border-color: var(--subtle);
+    text-decoration: none;
+  }
+
+  /* ── projects grid ────────────────────────────────────── */
+  .projects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  @media (max-width: 540px) { .projects-grid { grid-template-columns: 1fr; } }
+
+  .project-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    transition: border-color 0.15s;
+    text-decoration: none !important;
+    display: block;
+  }
+  .project-card:hover { border-color: var(--subtle); text-decoration: none; }
+  .project-card .pc-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+  }
+  .project-card .pc-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .project-card .pc-footer {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .project-card .pc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .project-card .pc-tag {
+    font-size: 0.72rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+  }
+  .project-card .pc-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  /* star count */
+  .pc-stars {
+    font-size: 0.72rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .pc-stars svg { opacity: 0.55; }
+  /* contributed badge */
+  .pc-contrib {
+    font-size: 0.68rem;
+    font-family: "DM Mono", monospace;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.8;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── writing list ─────────────────────────────────────── */
+  .writing-list { list-style: none; margin: 0; padding: 0; }
+  .writing-list li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .writing-list li:last-child { border-bottom: none; }
+  .writing-list .wl-title {
+    font-size: 0.9rem;
+    color: var(--text);
+    flex: 1;
+  }
+  .writing-list .wl-title a { color: inherit; }
+  .writing-list .wl-title a:hover { color: var(--accent); text-decoration: none; }
+  .writing-list .wl-meta {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    white-space: nowrap;
+  }
+  .see-all {
+    display: inline-block;
+    margin-top: 1.25rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .see-all:hover { color: var(--text); text-decoration: none; }
+</style>
+
+<!-- ── HERO ──────────────────────────────────────────────── -->
+<section class="hero">
+  <h1>Stephen Oni <span>/ steveoni</span></h1>
+  <p class="bio">
+    I am a software engineer who has led and worked across the stack, taking products from idea to production.
+
+I once had a strong interest in Web AI, where I contributed to advancing the field through published writings and by contributing to open-source projects that empower developers to integrate AI into the web. As a result of this work, I became a Google Developer Expert in Machine Learning.
+  </p>
+  <p class="bio" style="margin-top:0.6rem;">
+    I am currently exploring machine learning systems and building products focused on agentic AI.
+  </p>
+  <div class="social">
+    {% if site.github_username %}
+    <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener">github</a>
+    {% endif %}
+    {% if site.twitter_username %}
+    <a href="https://twitter.com/{{ site.twitter_username }}" target="_blank" rel="noopener">twitter</a>
+    {% endif %}
+    {% if site.linkedin_username %}
+    <a href="https://linkedin.com/in/{{ site.linkedin_username }}" target="_blank" rel="noopener">linkedin</a>
+    {% endif %}
+    {% if site.email %}
+    <a href="mailto:{{ site.email }}">email</a>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ── FEATURED PROJECTS ─────────────────────────────────── -->
+<p class="section-label">Featured Projects</p>
+<div class="projects-grid">
+  {% for project in page.featured_projects %}
+  <a class="project-card" href="{{ project.url }}" {% if project.url contains "http" %}target="_blank" rel="noopener"{% endif %}>
+    <div class="pc-title">{{ project.name }}</div>
+    <div class="pc-desc">{{ project.description }}</div>
+    <div class="pc-footer">
+      {% if project.tags %}
+      <div class="pc-tags">
+        {% for tag in project.tags %}
+        <span class="pc-tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="pc-meta">
+        {% if project.stars %}
+        <span class="pc-stars">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+          </svg>
+          {{ project.stars }}
+        </span>
+        {% endif %}
+        {% if project.contrib %}
+        <span class="pc-contrib">contrib</span>
+        {% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+<a class="see-all" href="/project">all projects →</a>
+
+<!-- ── RECENT WRITING ─────────────────────────────────────── -->
+<p class="section-label" style="margin-top:3rem;">Recent Writing</p>
+<ul class="writing-list">
+  {% for post in site.posts limit:5 %}
+  <li>
+    <span class="wl-title"><a href="{{ post.url | relative_url }}">{{ post.title }}</a></span>
+    <span class="wl-meta">{{ post.date | date: "%Y-%m-%d" }}</span>
+  </li>
+  {% endfor %}
+</ul>
+<a class="see-all" href="/blog">all writing →</a>
+

@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Postgres-redis Extension in Rust · Stephen Oni</title>
+  <meta name="description" content="A novice's dance amidst binary symphony" />
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Postgres-redis Extension in Rust | Stephen Oni</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Postgres-redis Extension in Rust" />
+<meta name="author" content="Stephen Oni" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store." />
+<meta property="og:description" content="The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store." />
+<link rel="canonical" href="http://localhost:4000/database/postgres-redis-extension-in-rust/" />
+<meta property="og:url" content="http://localhost:4000/database/postgres-redis-extension-in-rust/" />
+<meta property="og:site_name" content="Stephen Oni" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-04-15T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Postgres-redis Extension in Rust" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Stephen Oni"},"dateModified":"2024-04-15T00:00:00+01:00","datePublished":"2024-04-15T00:00:00+01:00","description":"The main objective of this project was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store.","headline":"Postgres-redis Extension in Rust","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/database/postgres-redis-extension-in-rust/"},"url":"http://localhost:4000/database/postgres-redis-extension-in-rust/"}</script>
+<!-- End Jekyll SEO tag -->
+
+  <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── tokens ───────────────────────────────────────────── */
+    :root {
+      --bg:        #0e0e10;
+      --surface:   #141416;
+      --border:    #222226;
+      --text:      #e8e8e4;
+      --muted:     #888884;
+      --subtle:    #444440;
+      --accent:    #a8c5a0;   /* sage green — calm, natural */
+      --link:      #a8c5a0;
+      --link-hover:#c8e5c0;
+      --code-bg:   #131315;
+      --max-w:     680px;
+    }
+
+    /* ── reset ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── nav ──────────────────────────────────────────────── */
+    .site-nav {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .site-nav .brand {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+    .site-nav .brand a { color: inherit; }
+    .site-nav .brand a:hover { text-decoration: none; color: var(--accent); }
+    .site-nav .links { display: flex; gap: 1.75rem; }
+    .site-nav .links a {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .site-nav .links a:hover { color: var(--text); text-decoration: none; }
+    .site-nav .links a.active { color: var(--text); }
+
+    /* ── main content ─────────────────────────────────────── */
+    main {
+      max-width: var(--max-w);
+      margin: 3.5rem auto 5rem;
+      padding: 0 1.5rem;
+    }
+
+    /* ── footer ───────────────────────────────────────────── */
+    .site-footer {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .site-footer p { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links { display: flex; gap: 1.25rem; }
+    .site-footer .footer-links a { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── typography ───────────────────────────────────────── */
+    h1 { font-size: 1.6rem; font-weight: 500; line-height: 1.25; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    h2 { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+         color: var(--muted); margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1rem; font-weight: 500; margin: 1.25rem 0 0.4rem; }
+    h4 { font-size: 0.9rem; font-weight: 500; color: var(--muted); margin: 1rem 0 0.3rem; }
+    p  { margin: 0.75rem 0; color: var(--text); }
+    ul, ol { margin: 0.75rem 0 0.75rem 1.4rem; }
+    li { margin-bottom: 0.3rem; }
+
+    blockquote {
+      border-left: 2px solid var(--subtle);
+      padding: 0.3rem 1rem;
+      color: var(--muted);
+      margin: 1.25rem 0;
+      font-style: italic;
+    }
+
+    code {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    pre {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+    /* ── syntax highlighting (Rouge — custom dark) ────────── */
+    .highlight          { background: var(--code-bg); border-radius: 8px; border: 1px solid var(--border); margin: 1.25rem 0; overflow-x: auto; }
+    .highlight pre      { background: none; border: none; border-radius: 0; margin: 0; padding: 1.1rem 1.25rem; }
+
+    /* language label pill */
+    .highlight[data-lang]::before {
+      content: attr(data-lang);
+      display: block;
+      font-size: 0.68rem;
+      font-family: "DM Mono", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--subtle);
+      padding: 0.5rem 1.25rem 0;
+    }
+
+    /* token colours — readable on dark bg, WCAG AA compliant */
+    .highlight .c,  .highlight .cm, .highlight .c1, .highlight .cs  { color: #6a8060; font-style: italic; }  /* comments — muted sage */
+    .highlight .k,  .highlight .kd, .highlight .kn, .highlight .kp,
+    .highlight .kr, .highlight .kt                                   { color: #c792ea; }  /* keywords — soft violet */
+    .highlight .n,  .highlight .nb, .highlight .ni, .highlight .nl,
+    .highlight .nn, .highlight .nx                                   { color: #c3c3be; }  /* names — near-white */
+    .highlight .na                                                   { color: #82aaff; }  /* attr names — sky blue */
+    .highlight .nf, .highlight .fm, .highlight .py                  { color: #82aaff; }  /* function names — sky blue */
+    .highlight .nc, .highlight .nd, .highlight .ne                  { color: #ffcb6b; }  /* class/decorator — amber */
+    .highlight .s,  .highlight .s1,.highlight .s2, .highlight .sb,
+    .highlight .sc, .highlight .sd, .highlight .sh, .highlight .si,
+    .highlight .sx, .highlight .sr, .highlight .ss                  { color: #c3e88d; }  /* strings — soft lime */
+    .highlight .m,  .highlight .mf, .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il                                   { color: #f78c6c; }  /* numbers — warm orange */
+    .highlight .o,  .highlight .ow                                   { color: #89ddff; }  /* operators — ice blue */
+    .highlight .p,  .highlight .pi                                   { color: #89ddff; }  /* punctuation */
+    .highlight .err                                                   { color: #ff5572; background: none; }  /* errors */
+    .highlight .ge  { font-style: italic; }
+    .highlight .gs  { font-weight: bold; }
+    .highlight .cp                                                    { color: #ffcb6b; }  /* preprocessor — amber */
+    .highlight .gh, .highlight .gu                                   { color: var(--muted); font-weight: bold; }  /* diff headings */
+    .highlight .gd                                                    { color: #ff5572; background: rgba(255,85,114,0.08); display: block; }  /* diff deleted */
+    .highlight .gi                                                    { color: #c3e88d; background: rgba(195,232,141,0.08); display: block; }  /* diff inserted */
+
+    /* line numbers if enabled */
+    .highlight .gl { color: var(--subtle); padding-right: 1.2rem; user-select: none; }
+
+    img { max-width: 100%; border-radius: 8px; margin: 1.25rem 0; display: block; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--surface); color: var(--muted); font-weight: 500; }
+
+    /* ── divider label ────────────────────────────────────── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 3rem 0 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+  </style>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W9SDX6RR77"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-W9SDX6RR77');
+</script>
+
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="brand"><a href="/">Stephen Oni</a></div>
+    <div class="links">
+      <a href="/" >home</a>
+      <a href="/blog" class="active">writing</a>
+      <a href="/project" >projects</a>
+    </div>
+  </nav>
+
+  <main>
+    <style>
+  /* ── post layout ──────────────────────────────────────── */
+  .post-header {
+    margin-bottom: 2.75rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-header h1 {
+    font-size: 1.55rem;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    margin-bottom: 0.75rem;
+    color: var(--text); /* explicit — ensures full contrast */
+  }
+  .post-header .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .post-header .post-date {
+    font-size: 0.8rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+  }
+  .post-header .post-category {
+    font-size: 0.68rem;
+    font-family: "DM Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+
+  /* ── post body typography ─────────────────────────────── */
+  .post-content {
+    /* slightly warmer text for long-form reading */
+    --text: #ebebе7;
+  }
+  .post-content > * + * { margin-top: 0; }
+
+  .post-content p {
+    font-size: 1rem;
+    line-height: 1.85;
+    color: var(--text);
+    margin: 1rem 0;
+  }
+
+  /* headings inside post — stronger hierarchy */
+  .post-content h2 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 3rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-content h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 2rem 0 0.5rem;
+  }
+  .post-content h4 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin: 1.5rem 0 0.4rem;
+  }
+
+  /* lists */
+  .post-content ul,
+  .post-content ol {
+    margin: 1rem 0 1rem 1.5rem;
+    color: var(--text);
+  }
+  .post-content li { margin-bottom: 0.35rem; line-height: 1.8; }
+
+  /* blockquote — improved contrast */
+  .post-content blockquote {
+    border-left: 2px solid var(--accent);
+    padding: 0.5rem 1.1rem;
+    background: rgba(168, 197, 160, 0.06);
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0;
+  }
+  .post-content blockquote p {
+    color: #b4b4b0;   /* AA on dark bg */
+    font-style: italic;
+    margin: 0;
+  }
+
+  /* inline code — ensure contrast */
+  .post-content code {
+    color: #c3e88d;   /* soft lime — legible on #131315 */
+  }
+
+  /* ── images — accessible & constrained ───────────────── */
+  .post-content img {
+    max-width: 100%;
+    height: auto;
+    max-height: 520px;
+    object-fit: contain;
+    display: block;
+    margin: 2rem auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface); /* letterbox bg when image has alpha */
+  }
+
+  /* figure + figcaption for authored images */
+  .post-content figure {
+    margin: 2rem 0;
+  }
+  .post-content figure img {
+    margin: 0 auto 0.6rem;
+  }
+  .post-content figcaption {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    font-style: italic;
+    font-family: "DM Mono", monospace;
+  }
+
+  /* ── post footer nav ──────────────────────────────────── */
+  .post-footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .post-footer a {
+    font-size: 0.83rem;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    transition: color 0.15s;
+  }
+  .post-footer a:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+</style>
+
+<article aria-labelledby="post-title">
+  <header class="post-header">
+    <h1 id="post-title">Postgres-redis Extension in Rust</h1>
+    <div class="post-meta">
+      <time class="post-date" datetime="2024-04-15">
+        April 15, 2024
+      </time>
+      
+      <span class="post-category">database</span>
+      
+    </div>
+  </header>
+
+  <div class="post-content">
+    <p>The main objective of this <a href="https://github.com/systemEng-Learning/postgres-redis">project</a> was to understand some Postgres internal and also get handy with rust via building a Postgres extension that allows tracking a particular table column and using the values in that column to populate our Redis store.</p>
+
+<p><img src="/assets/images/postgres-redis/scope.png" /></p>
+
+<p>The main scope is to track any update to a specific table, e.g. using the image above, We have a table with three columns <code class="language-plaintext highlighter-rouge">id</code>, <code class="language-plaintext highlighter-rouge">title</code>, and <code class="language-plaintext highlighter-rouge">description</code>. Let’s assume we want to track this table and build a Redis store where column <code class="language-plaintext highlighter-rouge">title</code> values are the keys and column <code class="language-plaintext highlighter-rouge">description</code> values will be the Redis values</p>
+
+<p><strong>Note</strong>: this article will be more about Postgres than Rust, hence you are meant to have at least an idea about rust.</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">Update</span> <span class="n">Test</span> <span class="k">SET</span> <span class="n">description</span> <span class="o">=</span> <span class="s1">'animal fox'</span> <span class="k">where</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">'Fox'</span>
+</code></pre></div></div>
+
+<p>the following are the main criteria:</p>
+
+<ol>
+  <li>identify the table to be tracked e.g <code class="language-plaintext highlighter-rouge">test</code></li>
+  <li>identify the columns in the table that will serve as the Redis keys and values</li>
+  <li>whenever we have an update query that has our table in it and the where clause contains our key column, obtain the update and send it to redis</li>
+</ol>
+
+<p><strong>Table of Contents</strong></p>
+
+<ol>
+  <li>Install Pgrx and Postgres db</li>
+  <li>Setting up custom variables using GUC</li>
+  <li>Postgres Hook</li>
+  <li>
+    <p>Obtaining Redis key- Planner Hook</p>
+  </li>
+  <li>
+    <p>Obtaining Redis value - Executor end</p>
+  </li>
+  <li>
+    <p>Background writer and shared memory</p>
+  </li>
+  <li>Running the code</li>
+</ol>
+
+<h2 id="install-pgrx-and-postgres-db">Install Pgrx and Postgres db</h2>
+
+<p>To get started let’s install postgres db; the easiest way to install postgres db without any complicated issues for the project is to install via <a href="https://postgresapp.com/">postgres.app</a>.</p>
+
+<p>Once Postgres db is installed, we can install <a href="https://github.com/pgcentralfoundation/pgrx">pgrx</a>, first make sure you have <code class="language-plaintext highlighter-rouge">rust</code> and <code class="language-plaintext highlighter-rouge">cargo</code> installed.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo <span class="nb">install</span> <span class="nt">--locked</span> cargo-pgrx
+</code></pre></div></div>
+
+<p>once the installation is done, we can then initialize pgrx to properly configure the pgrx development environment</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo pgrx init
+</code></pre></div></div>
+
+<p><strong>Note</strong>: If you are a Mac user and you have any issue with the initialization try running <code class="language-plaintext highlighter-rouge">brew install pkg-config icu4c</code></p>
+
+<p>Once the initialization is done, we can go ahead to create the project workspace</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo pgrx new postgres-redis
+</code></pre></div></div>
+
+<p>this initializes the workspace with a boilerplate to get started with.</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">ls </span>postgres-redis
+Cargo.toml postgres_redis.control sql src
+</code></pre></div></div>
+
+<p>For more details about pgrx command check <a href="https://github.com/pgcentralfoundation/pgrx/blob/develop/cargo-pgrx/README.md#first-time-initialization">here</a></p>
+
+<h3 id="setting-up-custom-variables-using-guc">Setting up custom variables using GUC</h3>
+
+<p>Based on the criteria we’ve set for this extension implementation we need a way to set up the required configs to get the extension working.</p>
+
+<p>We therefore make use of the Grand Unified configuration (Guc). Guc enables us to control postgres from different levels:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PGC_INTERNAL
+PGC_POSTMASTER
+PGC_SIGHUP
+PGC_SU_BACKEND
+PGC_BACKEND
+PGC_SUSET
+PGC_USERSET
+</code></pre></div></div>
+
+<p>For this project, we would love to enable postgres control from <code class="language-plaintext highlighter-rouge">PGC_USERSET</code>, by control, I mean setting up config/env variables that control how postgres behaves. Normally, postgres config can be set before initializing your db via <code class="language-plaintext highlighter-rouge">postgresql.conf</code>, but with the <code class="language-plaintext highlighter-rouge">PGC_USERSET</code> we are flexible and dynamic enough, such that we can set a config dynamically via</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">SYSTEM</span> <span class="k">SET</span> <span class="n">postgres_redis</span><span class="p">.</span><span class="k">table</span> <span class="k">TO</span> <span class="s1">'test'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>This will update <code class="language-plaintext highlighter-rouge">postgresql.auto.conf</code> with this new update and the config gets updated at run time.</p>
+
+<p>To know more about the other control levels in clear detail check <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/utils/guc.h#L37-L38">GucContext</a></p>
+
+<p>Going ahead with the specification above, we will create a new file called <code class="language-plaintext highlighter-rouge">gucs.rs</code> under <code class="language-plaintext highlighter-rouge">src/</code>. Each config variable definition follows this basic steps</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">use</span> <span class="nn">pgrx</span><span class="p">::</span><span class="o">*</span><span class="p">;</span>
+<span class="k">use</span> <span class="nn">std</span><span class="p">::</span><span class="nn">ffi</span><span class="p">::</span><span class="n">CStr</span><span class="p">;</span>
+
+<span class="k">pub</span> <span class="k">static</span> <span class="n">PGD_REDIS_URL</span><span class="p">:</span> <span class="n">GucSetting</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span> <span class="o">=</span>
+    <span class="nn">GucSetting</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="nb">None</span><span class="p">);</span>
+
+
+<span class="k">pub</span> <span class="k">fn</span> <span class="nf">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nn">GucRegistry</span><span class="p">::</span><span class="nf">define_string_guc</span><span class="p">(</span>
+        <span class="n">name</span><span class="p">:</span> <span class="s">"postgres_redis.redis_url"</span><span class="p">,</span>
+        <span class="n">short_description</span><span class="p">:</span> <span class="s">"Redis URL"</span><span class="p">,</span>
+        <span class="n">long_description</span><span class="p">:</span> <span class="s">"The url of the redis server to send the data to."</span><span class="p">,</span>
+        <span class="n">setting</span><span class="p">:</span> <span class="o">&amp;</span><span class="n">PGD_REDIS_URL</span><span class="p">,</span>
+        <span class="n">context</span><span class="p">:</span> <span class="nn">GucContext</span><span class="p">::</span><span class="n">Userset</span><span class="p">,</span> <span class="c1">// defined the control level here</span>
+        <span class="n">flags</span><span class="p">:</span> <span class="nn">GucFlags</span><span class="p">::</span><span class="nf">default</span><span class="p">(),</span>
+    <span class="p">);</span>
+<span class="p">}</span>
+
+
+</code></pre></div></div>
+
+<p>Firstly, we import the necessary packages; for <code class="language-plaintext highlighter-rouge">std::ffi:cstr</code>, since the extension is also interacting with C code from Postgres via an abstraction in <code class="language-plaintext highlighter-rouge">pgrx</code> we will make use of some <code class="language-plaintext highlighter-rouge">Foreign function interface</code> utils a lot and one of them is the null pointer char <code class="language-plaintext highlighter-rouge">char *</code> in c which is now represented has <code class="language-plaintext highlighter-rouge">CStr</code>.</p>
+
+<p>We create a static variable and a static lifetime for each of these config variables and then declare an initialization function to define each of the config variables via <code class="language-plaintext highlighter-rouge">GucRegistry::define_string_guc</code> this function will be called for each of the proposed variables and in it we declare the <code class="language-plaintext highlighter-rouge">name</code> of the variable and how it should be specified in the config file, also contains the description of the variable, <code class="language-plaintext highlighter-rouge">setting</code> to point the variable to our defined static variable, also we specified the context to which this variable can be created.</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">pub</span> <span class="k">static</span> <span class="n">PGD_REDIS_URL</span><span class="p">:</span> <span class="n">GucSetting</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span> <span class="o">=</span>
+    <span class="nn">GucSetting</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="nb">None</span><span class="p">);</span>
+
+<span class="k">pub</span> <span class="k">static</span> <span class="n">PGD_REDIS_TABLE</span><span class="p">:</span> <span class="n">GucSetting</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span> <span class="o">=</span>
+    <span class="nn">GucSetting</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="nb">None</span><span class="p">);</span>
+
+<span class="k">pub</span> <span class="k">static</span> <span class="n">PGD_KEY_COLUMN</span><span class="p">:</span> <span class="n">GucSetting</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span> <span class="o">=</span>
+    <span class="nn">GucSetting</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="nb">None</span><span class="p">);</span>
+
+<span class="k">pub</span> <span class="k">static</span> <span class="n">PGD_VALUE_COLUMN</span><span class="p">:</span> <span class="n">GucSetting</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span> <span class="o">=</span>
+    <span class="nn">GucSetting</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="k">'static</span> <span class="n">CStr</span><span class="o">&gt;&gt;</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="nb">None</span><span class="p">);</span>
+
+
+<span class="k">pub</span> <span class="k">fn</span> <span class="nf">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nn">GucRegistry</span><span class="p">::</span><span class="nf">define_string_guc</span><span class="p">(</span>
+        <span class="s">"postgres_redis.redis_url"</span><span class="p">,</span>
+        <span class="s">"Redis URL"</span><span class="p">,</span>
+        <span class="s">"The url of the redis server to send the data to."</span><span class="p">,</span>
+        <span class="o">&amp;</span><span class="n">PGD_REDIS_URL</span><span class="p">,</span>
+        <span class="nn">GucContext</span><span class="p">::</span><span class="n">Userset</span><span class="p">,</span>
+        <span class="nn">GucFlags</span><span class="p">::</span><span class="nf">default</span><span class="p">(),</span>
+    <span class="p">);</span>
+    <span class="nn">GucRegistry</span><span class="p">::</span><span class="nf">define_string_guc</span><span class="p">(</span>
+        <span class="s">"postgres_redis.redis_table"</span><span class="p">,</span>
+        <span class="s">"Table name"</span><span class="p">,</span>
+        <span class="s">"The table name to track for changes."</span><span class="p">,</span>
+        <span class="o">&amp;</span><span class="n">PGD_REDIS_TABLE</span><span class="p">,</span>
+        <span class="nn">GucContext</span><span class="p">::</span><span class="n">Userset</span><span class="p">,</span>
+        <span class="nn">GucFlags</span><span class="p">::</span><span class="nf">default</span><span class="p">(),</span>
+    <span class="p">);</span>
+    <span class="nn">GucRegistry</span><span class="p">::</span><span class="nf">define_string_guc</span><span class="p">(</span>
+        <span class="s">"postgres_redis.key_column"</span><span class="p">,</span>
+        <span class="s">"Table column name"</span><span class="p">,</span>
+        <span class="s">"The column name whose value will be used as the key in the redis hash."</span><span class="p">,</span>
+        <span class="o">&amp;</span><span class="n">PGD_KEY_COLUMN</span><span class="p">,</span>
+        <span class="nn">GucContext</span><span class="p">::</span><span class="n">Userset</span><span class="p">,</span>
+        <span class="nn">GucFlags</span><span class="p">::</span><span class="nf">default</span><span class="p">(),</span>
+    <span class="p">);</span>
+    <span class="nn">GucRegistry</span><span class="p">::</span><span class="nf">define_string_guc</span><span class="p">(</span>
+        <span class="s">"postgres_redis.value_column"</span><span class="p">,</span>
+        <span class="s">"Table column name"</span><span class="p">,</span>
+        <span class="s">"The column name whose value will be used as the value in the redis hash."</span><span class="p">,</span>
+        <span class="o">&amp;</span><span class="n">PGD_VALUE_COLUMN</span><span class="p">,</span>
+        <span class="nn">GucContext</span><span class="p">::</span><span class="n">Userset</span><span class="p">,</span>
+        <span class="nn">GucFlags</span><span class="p">::</span><span class="nf">default</span><span class="p">(),</span>
+    <span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Now we have the variables defined, we will discuss how to call this variable and make use of them later in this article</p>
+
+<h2 id="postgres-hook">Postgres Hook</h2>
+
+<p>If we open the <code class="language-plaintext highlighter-rouge">src/lib.rs</code> we will see some boilerplate code to get us started. the code imports some of the necessary modules needed and also creates a Postgres sql function and includes a test for us.</p>
+
+<p>For example, just using the provided function</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">#[pg_extern]</span>
+<span class="k">fn</span> <span class="nf">hello_postgres_redis</span><span class="p">()</span> <span class="k">-&gt;</span> <span class="o">&amp;</span><span class="k">'static</span> <span class="nb">str</span> <span class="p">{</span>
+    <span class="s">"Hello, postgres_redis"</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">[pg_extern]</code> is a macro that helps write the sql function query <code class="language-plaintext highlighter-rouge">CREATE OR REPLACE FUNCTION ....</code> via the <code class="language-plaintext highlighter-rouge">hello_postgres_redis</code>, but unfortunately we won’t discuss in details how to create functions.</p>
+
+<p>Well, we should be able to compile successfully and initialize our extension, and then call the <code class="language-plaintext highlighter-rouge">hello_postgres_redis()</code> function</p>
+
+<p>build and run the code using pg14</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo pgrx run pg14
+
+<span class="nv">postgres_redis</span><span class="o">=</span><span class="c">#</span>
+</code></pre></div></div>
+
+<p>and then initialize the extension</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># create extension postgres_redis;</span>
+CREATE EXTENSION
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">postgres_redis</code> is the name of our crate library, and then make a call to the sql function</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>postgres_redis=# select hello_postgres_redis();
+ hello_postgres_redis
+-----------------------
+ Hello, postgres_redis
+(1 row)
+
+postgres_redis=#
+</code></pre></div></div>
+
+<p>The result above is the current state of our code.</p>
+
+<p>Our main focus is to create hooks that help interfere with our code at different junctions needed;</p>
+
+<ol>
+  <li>intercept the postgres process during Query planner (before query optimization ), to fetch our Redis key from the specified table and column</li>
+  <li>Intercept postgress process during executor run, so has to get customized data returned from <code class="language-plaintext highlighter-rouge">select</code> query</li>
+  <li>intercept postgress process when the executor is done, to fetch our redis key value</li>
+  <li>Intercept Postgres process during commit, so has to save the data (key and value) fetched</li>
+</ol>
+
+<p>Don’t worry, if you are not cleared each stage of interception, we will discuss more about them in subsequent sections of this article.</p>
+
+<p>Before we can start initializing each of the interception stages, we need to set the basic layout of our hooks</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">use</span> <span class="nn">pgrx</span><span class="p">::{</span><span class="nn">prelude</span><span class="p">::</span><span class="o">*</span><span class="p">,</span> <span class="n">register_hook</span><span class="p">,</span> <span class="n">HookResult</span><span class="p">,</span> <span class="n">PgHooks</span><span class="p">};</span>
+
+<span class="c1">// define custom data fields here for use accross our hooks</span>
+<span class="k">struct</span> <span class="n">PRHook</span> <span class="p">{</span> <span class="p">}</span>
+
+<span class="c1">// define custom hooks has method</span>
+<span class="k">impl</span> <span class="n">PgHooks</span> <span class="k">for</span> <span class="n">PRHook</span> <span class="p">{</span> <span class="p">}</span>
+
+<span class="k">static</span> <span class="k">mut</span> <span class="n">HOOK</span><span class="p">:</span> <span class="n">PRHook</span> <span class="o">=</span> <span class="n">PRHook</span> <span class="p">{}</span> <span class="c1">// create hook variable</span>
+
+<span class="c1">// function to register our hook and initialize various utilities needed</span>
+<span class="k">pub</span> <span class="k">unsafe</span> <span class="k">extern</span> <span class="s">"C"</span> <span class="k">fn</span> <span class="nf">_PG_init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// intializae utilities</span>
+    <span class="nf">register_hooks</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">HOOK</span><span class="p">);</span> <span class="c1">// register hook</span>
+ <span class="p">}</span>
+</code></pre></div></div>
+
+<p>First, we created a struct <code class="language-plaintext highlighter-rouge">PRHook</code>, where we can create various fields that can be passed around in our custom hooks. Custom hooks definition are implemented has method in <code class="language-plaintext highlighter-rouge">impl PgHooks for PRHook</code>, after which the hooks is initialized and register as hooks in <code class="language-plaintext highlighter-rouge">_PG_init</code></p>
+
+<p>For this article, we will need to declare some fields in PRHook to store our custom variables</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">PRHook</span> <span class="p">{</span>
+    <span class="n">update_receiver</span><span class="p">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="n">UpdateDestReceiver</span><span class="o">&gt;</span><span class="p">,</span> <span class="c1">// store data from executor end intersecting update queries</span>
+    <span class="n">where_clause_receiver</span><span class="p">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="p">(</span><span class="nb">String</span><span class="p">,</span> <span class="nb">String</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span> <span class="c1">// store values to be use has redis key</span>
+    <span class="n">table</span><span class="p">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="p">,</span> <span class="c1">// store the table name extracted from the config</span>
+    <span class="n">key_column</span><span class="p">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="p">,</span>  <span class="c1">// store the column  whose value will be use as redis key</span>
+    <span class="n">value_column</span><span class="p">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="nb">String</span><span class="o">&gt;</span><span class="p">,</span> <span class="c1">// store the column name whose value will be use as redis value</span>
+    <span class="n">keep_running</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="c1">// flag if table name is found or not in the query processs</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>and here is the blueprint of our hooks, we will discuss more about them in subsequent sections</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">impl</span> <span class="n">PgHooks</span> <span class="k">for</span> <span class="n">PRHook</span> <span class="p">{</span>
+    <span class="k">fn</span> <span class="nf">planner</span><span class="p">()</span> <span class="p">{}</span>
+    <span class="k">fn</span> <span class="nf">excutor_end</span><span class="p">()</span> <span class="p">{}</span>
+    <span class="k">fn</span> <span class="nf">commit</span><span class="p">()</span> <span class="p">{}</span>
+    <span class="k">fn</span> <span class="nf">abort</span><span class="p">()</span> <span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Now we have the basic structure of the hooks that will be implemented to get the work done. Next, we need to create the Hook struct variable and then initialize it in <code class="language-plaintext highlighter-rouge">_PG_init</code></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="k">mut</span> <span class="n">HOOK</span><span class="p">:</span> <span class="n">PRHook</span> <span class="o">=</span> <span class="n">PRHook</span> <span class="p">{</span>
+    <span class="n">update_receiver</span><span class="p">:</span> <span class="nb">None</span><span class="p">,</span>
+    <span class="n">where_clause_receiver</span><span class="p">:</span> <span class="nb">None</span><span class="p">,</span>
+    <span class="n">table</span><span class="p">:</span> <span class="nb">None</span><span class="p">,</span>
+    <span class="n">key_column</span><span class="p">:</span> <span class="nb">None</span><span class="p">,</span>
+    <span class="n">value_column</span><span class="p">:</span> <span class="nb">None</span><span class="p">,</span>
+    <span class="n">keep_running</span><span class="p">:</span> <span class="k">true</span><span class="p">,</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>and then create an <code class="language-plaintext highlighter-rouge">init</code> function comprising of fetching the necessary config variables and then registering the hook.</p>
+
+<p>To fetch <code class="language-plaintext highlighter-rouge">Guc</code> variables we first need to import our <code class="language-plaintext highlighter-rouge">gucs</code> module and then fetch each of the config variables e.g</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">pub</span> <span class="k">mod</span> <span class="n">gucs</span>
+
+
+<span class="k">unsafe</span> <span class="k">fn</span> <span class="nf">init_hook</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// check if the env variable is not empty</span>
+    <span class="k">if</span> <span class="nn">gucs</span><span class="p">::</span><span class="n">PGD_REDIS_TABLE</span><span class="nf">.get</span><span class="p">()</span><span class="nf">.is_none</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">log</span><span class="o">!</span><span class="p">(</span><span class="s">"Table name is not set"</span><span class="p">);</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="c1">// the table value which is &amp;str</span>
+    <span class="k">let</span> <span class="n">table_name</span> <span class="o">=</span> <span class="nn">gucs</span><span class="p">::</span><span class="n">PGD_REDIS_TABLE</span>
+        <span class="nf">.get</span><span class="p">()</span>
+        <span class="nf">.unwrap</span><span class="p">()</span>
+        <span class="nf">.to_str</span><span class="p">()</span>
+        <span class="nf">.expect</span><span class="p">(</span><span class="s">"table name extraction failed"</span><span class="p">);</span>
+
+    <span class="c1">//......... other variables are ectracted the same way has table_name........</span>
+
+    <span class="c1">// convert the reference string to a Owned string</span>
+    <span class="c1">// and store in Hook.table</span>
+    <span class="n">HOOK</span><span class="py">.table</span> <span class="o">=</span> <span class="nf">Some</span><span class="p">(</span><span class="n">table_name</span><span class="nf">.to_string</span><span class="p">());</span>
+
+    <span class="c1">// register the hook</span>
+    <span class="nf">register_hook</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">HOOK</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The above code block shows how we obtain the config variables and then initialize the hook variable using <code class="language-plaintext highlighter-rouge">register_hook</code>. also note that we make use of <code class="language-plaintext highlighter-rouge">unsafe</code>; we will use this a lot, it helps us to work with raw pointer a lot.</p>
+
+<p>We can now formally initialize how <code class="language-plaintext highlighter-rouge">guc</code> variable and <code class="language-plaintext highlighter-rouge">init_hook</code></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">#[pg_guard]</span>
+<span class="k">pub</span> <span class="k">unsafe</span> <span class="k">extern</span> <span class="s">"C"</span> <span class="k">fn</span> <span class="nf">_PG_init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nn">gucs</span><span class="p">::</span><span class="nf">init</span><span class="p">();</span>
+    <span class="nf">init_hook</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">unsafe extern "C"</code> function is to tell that this function will be called in a c environment after it’s compiled to a shared library and linked from C. To learn more about unsafe check this rust book <a href="https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html">chapter</a></p>
+
+<h2 id="obtaining-redis-key---planner-hook">Obtaining Redis key - Planner Hook</h2>
+
+<p>We’ve set up the structure, and the right time to start implementing our hooks method. First, we need to fetch the value from the column we specify to be our key column. What do we mean by key column and what is the visual representation of this?</p>
+
+<p>I will explain this using the example we started with from the beginning</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">Update</span> <span class="n">Test</span> <span class="k">SET</span> <span class="n">description</span> <span class="o">=</span> <span class="s1">'animal fox'</span> <span class="k">where</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">'Fox'</span>
+</code></pre></div></div>
+
+<p>imagine we’ve chosen <code class="language-plaintext highlighter-rouge">title</code> to be the column we want its value to be our key, so whenever there is an update, we want to intercept this query has shown above hence we need a way to</p>
+
+<ul>
+  <li>identify if the column we want is present in the query</li>
+  <li>if the column is detected in the query, extract its value as a key e.g <code class="language-plaintext highlighter-rouge">Fox</code> is the value and will be our redis key.</li>
+  <li>then store the column name and its value in <code class="language-plaintext highlighter-rouge">where_clause_receiver</code>.</li>
+  <li>if a column or table is not found, we prevent the postgres from processing any code from us.</li>
+</ul>
+
+<p>To achieve the specified steps, we are going to implement a <code class="language-plaintext highlighter-rouge">planner</code> hook.</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span>
+        <span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">,</span>
+        <span class="n">parse</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">Query</span><span class="o">&gt;</span><span class="p">,</span>
+        <span class="n">query_string</span><span class="p">:</span> <span class="o">*</span><span class="k">const</span> <span class="nn">std</span><span class="p">::</span><span class="nn">os</span><span class="p">::</span><span class="nn">raw</span><span class="p">::</span><span class="nb">c_char</span><span class="p">,</span>
+        <span class="n">cursor_options</span><span class="p">:</span> <span class="nb">i32</span><span class="p">,</span>
+        <span class="n">bound_params</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">ParamListInfoData</span><span class="o">&gt;</span><span class="p">,</span>
+        <span class="n">prev_hook</span><span class="p">:</span> <span class="k">fn</span><span class="p">(</span>
+            <span class="n">parse</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">Query</span><span class="o">&gt;</span><span class="p">,</span>
+            <span class="n">query_string</span><span class="p">:</span> <span class="o">*</span><span class="k">const</span> <span class="nn">std</span><span class="p">::</span><span class="nn">os</span><span class="p">::</span><span class="nn">raw</span><span class="p">::</span><span class="nb">c_char</span><span class="p">,</span>
+            <span class="n">cursor_options</span><span class="p">:</span> <span class="nb">i32</span><span class="p">,</span>
+            <span class="n">bound_params</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">ParamListInfoData</span><span class="o">&gt;</span><span class="p">,</span>
+        <span class="p">)</span> <span class="k">-&gt;</span> <span class="n">HookResult</span><span class="o">&lt;*</span><span class="k">mut</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="n">PlannedStmt</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="k">-&gt;</span> <span class="n">HookResult</span><span class="o">&lt;*</span><span class="k">mut</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="n">PlannedStmt</span><span class="o">&gt;</span> <span class="p">{}</span>
+</code></pre></div></div>
+
+<p>Don’t be bothered about the verbose list of function args and their type, for this implementation our main focus <code class="language-plaintext highlighter-rouge">parse: PgBox&lt;pg_sys::Query&gt;</code> and <code class="language-plaintext highlighter-rouge">prev_hook</code> callback.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">parse</code> arg is a <code class="language-plaintext highlighter-rouge">Query</code> type and why are using this, doing query processing, postgres converts each of this query and sub-queries statements to a query tree, this query tree is a Data structure defined in <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/parsenodes.h#L106-L107">parsenode.h</a></p>
+
+<p>In this query table, we would only be making use of two fields for our exploration</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">Query</span>
+<span class="p">{</span>
+    <span class="n">List</span>	   <span class="o">*</span><span class="n">rtable</span><span class="p">;</span>			<span class="cm">/* list of range table entries */</span>
+    <span class="n">FromExpr</span>   <span class="o">*</span><span class="n">jointree</span><span class="p">;</span>		<span class="cm">/* table join tree (FROM and WHERE clauses) */</span>
+<span class="p">}</span> <span class="n">Query</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">rtable</code> fields contains list of tables, from here we can detect if the table we specify in our config is present in the query.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">jointree</code> contains the data structure needed to generate our key from the Where clauses. The following image depicts the structure of the query tree</p>
+
+<p><img src="https://www.interdb.jp/pg/pgsql03/fig-3-03.png" alt="" /></p>
+
+<p>source: <a href="https://www.interdb.jp/pg/pgsql03/01.html">The internal of postgres</a></p>
+
+<p>Focusing on the <code class="language-plaintext highlighter-rouge">* jointree</code> contains <code class="language-plaintext highlighter-rouge">FromExpr</code> node and this contains <code class="language-plaintext highlighter-rouge">quals</code> node which has <code class="language-plaintext highlighter-rouge">Opexpr</code> node and then our main aim will be to fetch the <code class="language-plaintext highlighter-rouge">VarExpr</code> which will be the column name and then we fetch the <code class="language-plaintext highlighter-rouge">CONST</code> which is our key.</p>
+
+<p>Ok, back to code; First we need to check if this query statement contains our table, and create a file <code class="language-plaintext highlighter-rouge">src/utils.rs</code>. we will create a function that takes in <code class="language-plaintext highlighter-rouge">rtable</code> and then <code class="language-plaintext highlighter-rouge">table_name</code> we are looking for</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">pub</span> <span class="k">fn</span> <span class="nf">is_contain_table</span><span class="p">(</span><span class="n">table_lists</span><span class="p">:</span> <span class="o">*</span><span class="k">mut</span> <span class="n">List</span><span class="p">,</span> <span class="n">expected_table_name</span><span class="p">:</span> <span class="o">&amp;</span><span class="nb">str</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nb">bool</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">result</span> <span class="o">=</span> <span class="k">false</span><span class="p">;</span>
+
+    <span class="c1">// code goes here</span>
+
+    <span class="n">result</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Since <code class="language-plaintext highlighter-rouge">table_lists</code> has type <code class="language-plaintext highlighter-rouge">*mut List</code>, this shows it is a raw pointer hence we will need to make use of unsafe to work with this</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">pub</span> <span class="k">fn</span> <span class="nf">is_contain_table</span><span class="p">(</span><span class="n">table_lists</span><span class="p">:</span> <span class="o">*</span><span class="k">mut</span> <span class="n">List</span><span class="p">,</span> <span class="n">expected_table_name</span><span class="p">:</span> <span class="o">&amp;</span><span class="nb">str</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nb">bool</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">result</span> <span class="o">=</span> <span class="k">false</span><span class="p">;</span>
+    <span class="k">unsafe</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">if</span> <span class="o">!</span><span class="n">table_lists</span><span class="nf">.is_null</span><span class="p">()</span> <span class="p">{</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="n">table_lists</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="py">.length</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">..=</span><span class="n">length</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">table_entry</span> <span class="o">=</span> <span class="o">*</span><span class="nf">rt_fetch</span><span class="p">(</span><span class="n">i</span> <span class="k">as</span> <span class="nb">u32</span><span class="p">,</span> <span class="n">table_lists</span><span class="p">);</span>
+            <span class="k">if</span> <span class="n">table_entry</span><span class="py">.relkind</span> <span class="k">as</span> <span class="nb">u8</span> <span class="o">!=</span> <span class="n">RELKIND_RELATION</span> <span class="p">{</span>
+                <span class="k">continue</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">let</span> <span class="n">table_data</span> <span class="o">=</span> <span class="o">*</span><span class="n">table_entry</span><span class="py">.eref</span><span class="p">;</span>
+            <span class="k">let</span> <span class="n">name</span> <span class="o">=</span> <span class="nn">CStr</span><span class="p">::</span><span class="nf">from_ptr</span><span class="p">(</span><span class="n">table_data</span><span class="py">.aliasname</span><span class="p">);</span>
+            <span class="k">let</span> <span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+                <span class="nf">.to_str</span><span class="p">()</span>
+                <span class="nf">.expect</span><span class="p">(</span><span class="s">"Failed to convert Postgres query string for rust"</span><span class="p">);</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">expected_table_name</span> <span class="p">{</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">true</span><span class="p">;</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">result</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">table_lists.as_ref().unwrap().length</code> we dereference the pointer and get the length of the list and then loop through it, remember we said <code class="language-plaintext highlighter-rouge">rtable</code> is a list of tables. for subqueries, we will have multiple tables (relations), but for our example, we should have one.</p>
+
+<p>To get the <code class="language-plaintext highlighter-rouge">rt_fetch</code> takes in an index and the rtable list. it accesses the rtable per index and returns the table entry <code class="language-plaintext highlighter-rouge">RangeTblEntry</code>. This a data structure as defined <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/parsenodes.h#L884">here</a></p>
+
+<p>RangeTblEntry , contains several fields describing the table entry relation, but we only need 2 fields from it.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">RangeTblEntry</span>
+<span class="p">{</span>
+    <span class="kt">char</span>		<span class="n">relkind</span><span class="p">;</span>		<span class="cm">/* relation kind (see pg_class.relkind) */</span>
+    <span class="n">Alias</span>	   <span class="o">*</span><span class="n">eref</span><span class="p">;</span>			<span class="cm">/* expanded reference names */</span>
+<span class="p">}</span> <span class="n">RangeTblEntry</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>relkind, used to specify the type of table we are trying to work on, the following shows that we only want to work with a table of <code class="language-plaintext highlighter-rouge">RELKIND_RELATION</code> that is <code class="language-plaintext highlighter-rouge">ordinary table</code></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="n">table_entry</span><span class="py">.relkind</span> <span class="k">as</span> <span class="nb">u8</span> <span class="o">!=</span> <span class="n">RELKIND_RELATION</span> <span class="p">{</span>
+    <span class="k">continue</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>we have different types of tables from ordinary, secondary, foriegn tables to regular tables you can find more in <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/catalog/pg_class.h#L164-L165">pg_class.h</a></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">table_data</span> <span class="o">=</span> <span class="o">*</span><span class="n">table_entry</span><span class="py">.eref</span><span class="p">;</span>
+<span class="k">let</span> <span class="n">name</span> <span class="o">=</span> <span class="nn">CStr</span><span class="p">::</span><span class="nf">from_ptr</span><span class="p">(</span><span class="n">table_data</span><span class="py">.aliasname</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>we get the <code class="language-plaintext highlighter-rouge">.eref</code>, an <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/primnodes.h#L30-L31">Alias</a> data structure containing an aliasname of the table. This name is converted from raw pointer to c char and then converted to a proper string reference. If this result table name matches our expected table name we set <code class="language-plaintext highlighter-rouge">result</code> to true else false</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">is_contain_table</code> can then be imported into <code class="language-plaintext highlighter-rouge">src/lib.rs</code> and then called inside the planner hook</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">self</span><span class="py">.keep_running</span> <span class="o">=</span> <span class="nn">utils</span><span class="p">::</span><span class="nf">is_contain_table</span><span class="p">(</span><span class="n">parse</span><span class="py">.rtable</span><span class="p">,</span> <span class="k">self</span><span class="py">.table</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">());</span>
+    <span class="k">if</span> <span class="o">!</span><span class="k">self</span><span class="py">.keep_running</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nf">prev_hook</span><span class="p">(</span><span class="n">parse</span><span class="p">,</span> <span class="n">query_string</span><span class="p">,</span> <span class="n">cursor_options</span><span class="p">,</span> <span class="n">bound_params</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>if <code class="language-plaintext highlighter-rouge">self.keep_running</code> ends up being false, we call the <code class="language-plaintext highlighter-rouge">prev_hook</code> this to tell postgres to continue with its normal process.</p>
+
+<p>Now we can confirm if our table is present in the query, let extract the column name and value from the query</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">self</span><span class="py">.keep_running</span> <span class="o">=</span> <span class="nn">utils</span><span class="p">::</span><span class="nf">is_contain_table</span><span class="p">(</span><span class="n">parse</span><span class="py">.rtable</span><span class="p">,</span> <span class="k">self</span><span class="py">.table</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">());</span>
+    <span class="k">if</span> <span class="o">!</span><span class="k">self</span><span class="py">.keep_running</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nf">prev_hook</span><span class="p">(</span><span class="n">parse</span><span class="p">,</span> <span class="n">query_string</span><span class="p">,</span> <span class="n">cursor_options</span><span class="p">,</span> <span class="n">bound_params</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">let</span> <span class="n">jointree</span> <span class="o">=</span> <span class="o">*</span><span class="n">parse</span><span class="py">.jointree</span><span class="p">;</span>
+    <span class="k">let</span> <span class="n">quals</span><span class="p">:</span> <span class="o">*</span><span class="k">mut</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="n">Node</span> <span class="o">=</span> <span class="n">jointree</span><span class="py">.quals</span><span class="p">;</span>
+    <span class="k">let</span> <span class="n">quals_node</span> <span class="o">=</span> <span class="nf">eval_const_expressions</span><span class="p">(</span><span class="nn">std</span><span class="p">::</span><span class="nn">ptr</span><span class="p">::</span><span class="nf">null_mut</span><span class="p">(),</span> <span class="n">quals</span><span class="nf">.cast</span><span class="p">());</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">opexprs</span> <span class="o">=</span> <span class="nd">vec!</span><span class="p">[];</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">boolexprs</span> <span class="o">=</span> <span class="nd">vec!</span><span class="p">[];</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">result</span> <span class="o">=</span> <span class="nb">None</span><span class="p">;</span>
+    <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">quals_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_OpExpr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">opexprs</span><span class="nf">.push</span><span class="p">(</span><span class="n">quals_node</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">OpExpr</span><span class="o">&gt;</span><span class="p">());</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">quals_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_BoolExpr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">boolexprs</span><span class="nf">.push</span><span class="p">(</span><span class="n">quals_node</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">BoolExpr</span><span class="o">&gt;</span><span class="p">());</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>Recall, we said that our main target is the <code class="language-plaintext highlighter-rouge">quals</code> Node in jointree, which contains the whereclause. The quals are fetched and then passed into <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/backend/optimizer/util/clauses.c#L2122-L2123">eval_const_expressions</a>, this is use to optimize the query, it use to reduce constant subexpression such as instead of the query having <code class="language-plaintext highlighter-rouge">2 + 2</code> it reduces it to <code class="language-plaintext highlighter-rouge">4</code></p>
+
+<p>Once that is done, we need to identify the type of expression Node we are dealing with</p>
+
+<p>e.g The following is <code class="language-plaintext highlighter-rouge">OpExpr</code></p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">Update</span> <span class="n">Test</span> <span class="k">SET</span> <span class="n">description</span> <span class="o">=</span> <span class="s1">'animal fox'</span> <span class="k">where</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">'Fox'</span>
+</code></pre></div></div>
+
+<p>and the following is <code class="language-plaintext highlighter-rouge">BoolExpr</code></p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">Update</span> <span class="n">Test</span> <span class="k">SET</span> <span class="n">description</span> <span class="o">=</span> <span class="s1">'animal fox'</span> <span class="k">where</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">'Fox'</span> <span class="k">AND</span> <span class="n">id</span><span class="o">=</span> <span class="mi">2</span>
+</code></pre></div></div>
+
+<p>Hence <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/nodes.h#L590-L591">is_a</a> is used to check the type of Node expr we are dealing with, also note that this node is represented as <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/nodes.h#L17-L18">NodeTag</a></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">........</span>
+
+    <span class="k">while</span> <span class="k">let</span> <span class="nf">Some</span><span class="p">(</span><span class="n">boolexpr</span><span class="p">)</span> <span class="o">=</span> <span class="n">boolexprs</span><span class="nf">.pop</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">boolexpr</span><span class="p">)</span><span class="py">.args</span><span class="p">;</span>
+        <span class="k">let</span> <span class="n">l</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">);</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">0</span><span class="o">..</span><span class="n">l</span><span class="py">.length</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">f</span> <span class="o">=</span> <span class="nf">node_fetch</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">i</span> <span class="k">as</span> <span class="nb">usize</span><span class="p">);</span>
+            <span class="k">let</span> <span class="n">t</span> <span class="o">=</span> <span class="n">f</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">();</span>
+            <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">t</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_OpExpr</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">opexprs</span><span class="nf">.push</span><span class="p">(</span><span class="n">t</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">OpExpr</span><span class="o">&gt;</span><span class="p">());</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">t</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_BoolExpr</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">boolexprs</span><span class="nf">.push</span><span class="p">(</span><span class="n">t</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">BoolExpr</span><span class="o">&gt;</span><span class="p">());</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>For the query statement containing BoolExpr, within is is Opexpr so we loop through the BoolExpr, and fetch all the OpExpr until there is no BoolExpr to be evaluated.</p>
+
+<p>Once we have the list of Opexpr needed, now is the type to search through Opexpr and its fields to get what we need</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="err">.</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">........</span>
+
+    <span class="k">for</span> <span class="n">node</span> <span class="k">in</span> <span class="n">opexprs</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="n">op_expr_pointer</span> <span class="o">=</span> <span class="n">node</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">OpExpr</span><span class="o">&gt;</span><span class="p">();</span>
+        <span class="k">let</span> <span class="n">op_expr</span> <span class="o">=</span> <span class="o">*</span><span class="n">op_expr_pointer</span><span class="p">;</span>
+        <span class="k">let</span> <span class="n">op_number</span> <span class="o">=</span> <span class="nn">Oid</span><span class="p">::</span><span class="nf">from</span><span class="p">(</span><span class="mi">416</span><span class="p">);</span>
+
+        <span class="c1">// step 1</span>
+        <span class="k">if</span> <span class="n">op_expr</span><span class="py">.opno</span> <span class="o">==</span> <span class="n">op_number</span> <span class="p">||</span> <span class="n">op_expr</span><span class="py">.opno</span> <span class="o">==</span> <span class="nn">Oid</span><span class="p">::</span><span class="nf">from</span><span class="p">(</span><span class="n">TextEqualOperator</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// step 2</span>
+            <span class="k">let</span> <span class="n">args</span> <span class="o">=</span> <span class="n">op_expr</span><span class="py">.args</span><span class="p">;</span>
+            <span class="k">let</span> <span class="n">argg</span> <span class="o">=</span> <span class="n">args</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+            <span class="k">let</span> <span class="n">first_cell</span> <span class="o">=</span> <span class="n">argg</span><span class="py">.elements</span><span class="nf">.add</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+            <span class="k">let</span> <span class="n">first_value</span> <span class="o">=</span> <span class="n">first_cell</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="py">.ptr_value</span><span class="p">;</span>
+            <span class="k">let</span> <span class="n">second_cell</span> <span class="o">=</span> <span class="n">argg</span><span class="py">.elements</span><span class="nf">.add</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+            <span class="k">let</span> <span class="n">second_value</span> <span class="o">=</span> <span class="n">second_cell</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="py">.ptr_value</span><span class="p">;</span>
+            <span class="k">let</span> <span class="k">mut</span> <span class="n">first_node</span> <span class="o">=</span> <span class="n">first_value</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">();</span>
+            <span class="k">let</span> <span class="n">second_node</span> <span class="o">=</span> <span class="n">second_value</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">();</span>
+            <span class="c1">// step 3</span>
+            <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">first_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_RelabelType</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">let</span> <span class="n">relabel</span> <span class="o">=</span> <span class="n">first_node</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">RelabelType</span><span class="o">&gt;</span><span class="p">();</span>
+                <span class="n">first_node</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">relabel</span><span class="p">)</span><span class="py">.arg.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">();</span>
+            <span class="p">}</span>
+            <span class="c1">// step 4</span>
+            <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">first_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Var</span><span class="p">)</span>
+                <span class="o">&amp;&amp;</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">second_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Const</span><span class="p">)</span>
+            <span class="p">{</span>
+                <span class="c1">// final code goes here</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">result</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Using the commented step to follow up on the code above</p>
+
+<p><strong>step 1</strong> : <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/primnodes.h#L531-L550">OpExpr</a> is a data structure describing the Operator expertion.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">OpExpr</span>
+<span class="p">{</span>
+	<span class="n">Expr</span>		<span class="n">xpr</span><span class="p">;</span>
+	<span class="n">Oid</span>			<span class="n">opno</span><span class="p">;</span>			<span class="cm">/* PG_OPERATOR OID of the operator */</span>
+	<span class="n">List</span>	   <span class="o">*</span><span class="n">args</span><span class="p">;</span>			<span class="cm">/* arguments to the operator (1 or 2) */</span>
+
+    <span class="p">.....</span>
+<span class="p">}</span> <span class="n">OpExpr</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>Step 1 will check if the <code class="language-plaintext highlighter-rouge">.opno</code> is an equal operator which has an oid equivalent to <code class="language-plaintext highlighter-rouge">416</code> or it is Equal to <code class="language-plaintext highlighter-rouge">TextEqualOperator</code> which has an oid =98. You can view the list of the operator and their oid value in <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/catalog/pg_operator.dat#L1-L2">pg_operator.dat</a></p>
+
+<p><strong>step 2</strong>: We access the <code class="language-plaintext highlighter-rouge">.arg</code> which is a list of arguments to the operator, the <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/pg_list.h#L50-L51">List</a> contains a field called elements this contains the actual data we need.</p>
+
+<p>For example <code class="language-plaintext highlighter-rouge">title="Fox"</code> the elements data structure will store the argument like; <code class="language-plaintext highlighter-rouge">{0=&gt; 'title', 1=&gt;"Fox"}</code> so we can access them via the index. Note this is just a concrete example just to make sure the idea is fully passed since it is needed for the next explanation.</p>
+
+<p>Once we access the <code class="language-plaintext highlighter-rouge">.elements</code> we access the <code class="language-plaintext highlighter-rouge">ptr_value</code>. note that elements is <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/pg_list.h#L43-L44">ListCell</a> data structure. The <code class="language-plaintext highlighter-rouge">ptr_value</code> obtained for both <code class="language-plaintext highlighter-rouge">first_value</code> and <code class="language-plaintext highlighter-rouge">second_value</code> are then converted to a <code class="language-plaintext highlighter-rouge">Node</code></p>
+
+<p><strong>step 3</strong>: Sometimes we might have a query statement like <code class="language-plaintext highlighter-rouge">.... where column_integer = "2"</code> The query process will need to do some kinda type conversion, it assigns this node to <code class="language-plaintext highlighter-rouge">T_RelabelType</code> and we then go ahead to cast it to the rightful node.</p>
+
+<p><strong>step 6</strong>: Check if the <code class="language-plaintext highlighter-rouge">fist_node</code> is a variable and check if the <code class="language-plaintext highlighter-rouge">second_node</code> is a constant node type.</p>
+
+<p>Let’s fetch the variable <code class="language-plaintext highlighter-rouge">first_node</code></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">first_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Var</span><span class="p">)</span>
+                <span class="o">&amp;&amp;</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">second_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Const</span><span class="p">)</span>
+            <span class="p">{</span>
+
+                <span class="k">let</span> <span class="n">var</span><span class="p">:</span> <span class="o">*</span><span class="k">mut</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="n">Var</span> <span class="o">=</span> <span class="n">first_node</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">Var</span><span class="o">&gt;</span><span class="p">();</span>
+                <span class="k">let</span> <span class="n">var_attid</span><span class="p">:</span> <span class="nb">i16</span> <span class="o">=</span> <span class="n">var</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="py">.varattno</span><span class="p">;</span>
+                <span class="k">let</span> <span class="n">varno</span> <span class="o">=</span> <span class="n">var</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="py">.varno</span><span class="p">;</span>
+                <span class="k">let</span> <span class="n">rte</span> <span class="o">=</span> <span class="nf">rt_fetch</span><span class="p">(</span><span class="n">varno</span><span class="p">,</span> <span class="n">range_table</span><span class="p">);</span>
+                <span class="k">let</span> <span class="n">rte_relid</span> <span class="o">=</span> <span class="n">rte</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="py">.relid</span><span class="p">;</span>
+                <span class="k">let</span> <span class="n">col_name</span> <span class="o">=</span> <span class="nf">get_attname</span><span class="p">(</span><span class="n">rte_relid</span><span class="p">,</span> <span class="n">var_attid</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+                <span class="k">let</span> <span class="n">col_name_str</span> <span class="o">=</span> <span class="nn">CStr</span><span class="p">::</span><span class="nf">from_ptr</span><span class="p">(</span><span class="n">col_name</span><span class="p">)</span><span class="nf">.to_str</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+
+                <span class="o">......</span><span class="err">.</span>
+            <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Firstly, we cast <code class="language-plaintext highlighter-rouge">first_node</code> into <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/primnodes.h#L141-L142">Var</a> expression node representing a variable, for our example the variable will be <code class="language-plaintext highlighter-rouge">title</code></p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">Var</span> <span class="p">{</span>
+    <span class="n">Expr</span>		<span class="n">xpr</span><span class="p">;</span>
+    <span class="n">Index</span>		<span class="n">varno</span><span class="p">;</span>			<span class="cm">/* index of this var's relation in the range
+								 * table, or INNER_VAR/OUTER_VAR/INDEX_VAR */</span>
+    <span class="n">AttrNumber</span>	<span class="n">varattno</span><span class="p">;</span>		<span class="cm">/* attribute number of this var, or zero for
+								 * all attrs ("whole-row Var") */</span>
+
+    <span class="p">........</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>First, we extract the <code class="language-plaintext highlighter-rouge">.varno</code> which is the index of the table in the rang table, and then <code class="language-plaintext highlighter-rouge">.varttno</code> which is the attribute number of the variable.</p>
+
+<p>Using the index of the table <code class="language-plaintext highlighter-rouge">.varno</code> will get the table entry of the table itself using <code class="language-plaintext highlighter-rouge">rt_fetch</code>, using the table entry we can then obtain the <strong>Oid</strong> of the table using <code class="language-plaintext highlighter-rouge">.relid</code>. Having the table Oid and the attribute number of the variable we can then obtain the column name itself using <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/backend/utils/cache/lsyscache.c#L817-L818">get_attname</a></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">first_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Var</span><span class="p">)</span>
+        <span class="o">&amp;&amp;</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">second_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Const</span><span class="p">)</span>
+    <span class="p">{</span>
+
+        <span class="k">let</span> <span class="n">constt</span><span class="p">:</span> <span class="o">*</span><span class="k">mut</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="n">Const</span> <span class="o">=</span> <span class="n">second_node</span><span class="py">.cast</span><span class="p">::</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">Const</span><span class="o">&gt;</span><span class="p">();</span>
+        <span class="k">let</span> <span class="n">consstt</span> <span class="o">=</span> <span class="n">constt</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+        <span class="k">let</span> <span class="n">const_cons</span> <span class="o">=</span> <span class="n">consstt</span><span class="py">.constvalue</span><span class="p">;</span>
+        <span class="k">let</span> <span class="n">const_type</span> <span class="o">=</span> <span class="n">consstt</span><span class="py">.consttype</span><span class="p">;</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="n">foutoid</span><span class="p">:</span> <span class="n">Oid</span> <span class="o">=</span> <span class="nn">Oid</span><span class="p">::</span><span class="nf">default</span><span class="p">();</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="n">typisvarlena</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="k">false</span><span class="p">;</span>
+        <span class="nf">getTypeOutputInfo</span><span class="p">(</span><span class="n">const_type</span><span class="p">,</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">foutoid</span><span class="p">,</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">typisvarlena</span><span class="p">);</span>
+        <span class="k">let</span> <span class="n">const_type_output</span> <span class="o">=</span> <span class="nf">OidOutputFunctionCall</span><span class="p">(</span><span class="n">foutoid</span><span class="p">,</span> <span class="n">const_cons</span><span class="p">);</span>
+        <span class="k">let</span> <span class="n">qual_value</span> <span class="o">=</span> <span class="nn">CStr</span><span class="p">::</span><span class="nf">from_ptr</span><span class="p">(</span><span class="n">const_type_output</span><span class="p">)</span>
+            <span class="nf">.to_str</span><span class="p">()</span>
+            <span class="nf">.expect</span><span class="p">(</span><span class="s">"Failed to convert Postgres query string for rust"</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>Like the <code class="language-plaintext highlighter-rouge">first_node</code>, we cast the <code class="language-plaintext highlighter-rouge">second_node</code> into <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/primnodes.h#L205-L206">const</a> data structure</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">Const</span>
+<span class="p">{</span>
+	<span class="n">Expr</span>		<span class="n">xpr</span><span class="p">;</span>
+	<span class="n">Oid</span>		<span class="n">consttype</span><span class="p">;</span>		<span class="cm">/* pg_type OID of the constant's datatype */</span>
+	<span class="n">Datum</span>		<span class="n">constvalue</span><span class="p">;</span>		<span class="cm">/* the constant's value */</span>
+    <span class="p">.....</span>
+<span class="p">}</span> <span class="n">Const</span><span class="p">;</span>
+
+</code></pre></div></div>
+
+<p>Firstly, we extract <code class="language-plaintext highlighter-rouge">constvalue</code> which is a <strong>Datum</strong>, a postgres internal representation of the actual value, also we extract the <code class="language-plaintext highlighter-rouge">consttype</code> which is the Oid of the value data type. Datum can be used to represent any type of value ranging from float to integer and the likes, hence we need to properly get the details about the value data type using its Oid, hence a call to <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/backend/utils/cache/lsyscache.c#L2858">getTypeOutputInfo</a> is needed.</p>
+
+<p>Yes, we now have the data type information, and also the value Datum, next step is to make a call to <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/backend/utils/fmgr/fmgr.c#L1653">OidOutputFunctionCall</a>; every column data type is associated to a function responsible for the way the value of that data type is transformed from Datum.</p>
+
+<p>What <code class="language-plaintext highlighter-rouge">OidOutputFunctionCall</code> does is to make a call to function manager <code class="language-plaintext highlighter-rouge">fmngr</code> that makes a call to the data type function and transforms them to the actual value from Datum. Once we have the actual value we convert it to a rust string <code class="language-plaintext highlighter-rouge">CStr::from_ptr</code></p>
+
+<p>Time to save the values obtained in our PRHook <code class="language-plaintext highlighter-rouge">where_clause_receiver</code> field</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="nf">planner</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="o">......</span>
+    <span class="k">if</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">first_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Var</span><span class="p">)</span>
+                <span class="o">&amp;&amp;</span> <span class="nf">is_a</span><span class="p">(</span><span class="n">second_node</span><span class="nf">.cast</span><span class="p">(),</span> <span class="nn">pg_sys</span><span class="p">::</span><span class="nn">NodeTag</span><span class="p">::</span><span class="n">T_Const</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="o">......</span>
+        <span class="k">if</span> <span class="n">col_name_str</span> <span class="o">==</span> <span class="n">key_column_name</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">s</span> <span class="o">=</span>
+                <span class="nd">format!</span><span class="p">(</span><span class="s">"PostgresRedis &gt; The query qual is  {col_name_str} = {qual_value}"</span><span class="p">);</span>
+            <span class="nd">notice!</span><span class="p">(</span><span class="s">"{s}"</span><span class="p">);</span>
+
+            <span class="k">self</span><span class="py">.where_clause_receiver</span> <span class="o">=</span> <span class="nf">Some</span><span class="p">((</span><span class="nn">String</span><span class="p">::</span><span class="nf">from</span><span class="p">(</span><span class="n">col_name_str</span><span class="p">),</span> <span class="n">qual_value</span><span class="nf">.to_string</span><span class="p">()));</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+
+    <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>We now have a redis key, we can now go ahead to fetch the redis value. View the full code for the planner hook <a href="https://github.com/systemEng-Learning/postgres-redis/blob/05ec5172157932635c1f773fd49d8b61dd13a948/src/lib.rs#L28">here</a></p>
+
+<h2 id="obtaining-redis-value---executor-end-hook">Obtaining Redis Value - Executor End Hook</h2>
+
+<p>This article is about showing how we can update the redis store with a key and value while updating a specific table. Due to this, we need to add another hook method, to enable us to get the updated tuple.</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">impl</span> <span class="n">PgHooks</span> <span class="k">for</span> <span class="n">PRHook</span> <span class="p">{</span>
+
+
+    <span class="k">fn</span> <span class="nf">executor_end</span><span class="p">(</span>
+        <span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">,</span>
+        <span class="n">query_desc</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">QueryDesc</span><span class="o">&gt;</span><span class="p">,</span>
+        <span class="n">prev_hook</span><span class="p">:</span> <span class="k">fn</span><span class="p">(</span><span class="n">query_desc</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">QueryDesc</span><span class="o">&gt;</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nn">pgrx</span><span class="p">::</span><span class="n">HookResult</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="k">-&gt;</span> <span class="nn">pgrx</span><span class="p">::</span><span class="n">HookResult</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="n">op</span> <span class="o">=</span> <span class="n">query_desc</span><span class="py">.operation</span><span class="p">;</span>
+        <span class="k">if</span> <span class="n">op</span> <span class="o">==</span> <span class="n">CmdType_CMD_UPDATE</span> <span class="p">{</span>
+
+         <span class="p">}</span>
+    <span class="p">}</span>
+
+ <span class="p">}</span>
+</code></pre></div></div>
+
+<p>We define the executor_end, the hook takes in query_desc which as type QueryDesc, a query descriptor; contains all the information needed to execute a query.</p>
+
+<p>Firstly, we make a call to <code class="language-plaintext highlighter-rouge">query_desc.operation</code> to check the type of query that is executed. Once we identify that the command type is <code class="language-plaintext highlighter-rouge">update</code> we are set to go.</p>
+
+<p>For the <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/executor/execdesc.h#L23-L24">QueryDesc</a> here are the fields we are going to need to fetch updated tuple:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">QueryDesc</span>
+<span class="p">{</span>
+	<span class="n">CmdType</span>		<span class="n">operation</span><span class="p">;</span>		<span class="cm">/* CMD_SELECT, CMD_UPDATE, etc. */</span>
+	<span class="n">PlannedStmt</span> <span class="o">*</span><span class="n">plannedstmt</span><span class="p">;</span>	<span class="cm">/* planner's output (could be utility, too) */</span>
+
+	<span class="cm">/* These fields are set by ExecutorStart */</span>
+	<span class="n">TupleDesc</span>	<span class="n">tupDesc</span><span class="p">;</span>		<span class="cm">/* descriptor for result tuples */</span>
+	<span class="n">EState</span>	   <span class="o">*</span><span class="n">estate</span><span class="p">;</span>			<span class="cm">/* executor's query-wide state */</span>
+	<span class="n">PlanState</span>  <span class="o">*</span><span class="n">planstate</span><span class="p">;</span>		<span class="cm">/* tree of per-plan-node state */</span>
+
+<span class="p">}</span> <span class="n">QueryDesc</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>our first mission, in the update, if block will be to make sure that our update command is not updating multiple rows, we just want to initialize our Postgres-redis process whenever an update is applied to a single row.</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="nf">executor_end</span><span class="p">(</span>
+        <span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">,</span>
+        <span class="n">query_desc</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">QueryDesc</span><span class="o">&gt;</span><span class="p">,</span>
+        <span class="n">prev_hook</span><span class="p">:</span> <span class="k">fn</span><span class="p">(</span><span class="n">query_desc</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">QueryDesc</span><span class="o">&gt;</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nn">pgrx</span><span class="p">::</span><span class="n">HookResult</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="k">-&gt;</span> <span class="nn">pgrx</span><span class="p">::</span><span class="n">HookResult</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="n">op</span> <span class="o">=</span> <span class="n">query_desc</span><span class="py">.operation</span><span class="p">;</span>
+        <span class="k">if</span> <span class="n">op</span> <span class="o">==</span> <span class="n">CmdType_CMD_UPDATE</span> <span class="p">{</span>
+
+            <span class="k">unsafe</span> <span class="p">{</span>
+                <span class="k">let</span> <span class="k">mut</span> <span class="n">single_row</span> <span class="o">=</span> <span class="k">false</span><span class="p">;</span>
+                <span class="k">let</span> <span class="n">estate</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">query_desc</span><span class="py">.estate</span><span class="p">);</span>
+                <span class="k">if</span> <span class="n">estate</span><span class="py">.es_processed</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+                    <span class="n">single_row</span> <span class="o">=</span> <span class="k">true</span><span class="p">;</span>
+                <span class="p">}</span>
+
+                <span class="k">if</span> <span class="n">single_row</span> <span class="p">{</span>
+
+                <span class="p">}</span>
+            <span class="p">}</span>
+         <span class="p">}</span>
+    <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Dereferencing <code class="language-plaintext highlighter-rouge">query_desc.estate</code> we obtain the working state of the executor, this state is represented with <a href="https://github.com/postgres/postgres/blob/0d30e48c2578a6857aa2869f1b2696b6eb5fef68/src/include/nodes/execnodes.h#L559-L560">Estate</a></p>
+
+<p>The following show some of the fields of Estate we will need for our operation</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">EState</span> <span class="p">{</span>
+    <span class="n">ResultRelInfo</span> <span class="o">**</span><span class="n">es_result_relations</span><span class="p">;</span>	<span class="cm">/* Array of per-range-table-entry
+											 * ResultRelInfo pointers, or NULL
+											 * if not a target table */</span>
+    <span class="n">uint64</span>		<span class="n">es_processed</span><span class="p">;</span>	<span class="cm">/* # of tuples processed */</span>
+
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Using <code class="language-plaintext highlighter-rouge">estate.es_processed</code> we obtain the number of tuples processed which is equivalent to the number of rows updated. If number of row is one, we continue with our process</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="nf">executor_end</span><span class="p">(</span>
+        <span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">,</span>
+        <span class="n">query_desc</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">QueryDesc</span><span class="o">&gt;</span><span class="p">,</span>
+        <span class="n">prev_hook</span><span class="p">:</span> <span class="k">fn</span><span class="p">(</span><span class="n">query_desc</span><span class="p">:</span> <span class="n">PgBox</span><span class="o">&lt;</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">QueryDesc</span><span class="o">&gt;</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nn">pgrx</span><span class="p">::</span><span class="n">HookResult</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="k">-&gt;</span> <span class="nn">pgrx</span><span class="p">::</span><span class="n">HookResult</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span> <span class="p">{</span>
+
+        <span class="o">.....</span>
+        <span class="k">if</span> <span class="n">single_row</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">result_rel_info</span> <span class="o">=</span> <span class="n">estate</span><span class="py">.es_result_relations</span><span class="p">;</span>
+            <span class="k">if</span> <span class="o">!</span><span class="n">result_rel_info</span><span class="nf">.is_null</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">let</span> <span class="n">relation_rel</span> <span class="o">=</span> <span class="o">*</span><span class="n">result_rel_info</span><span class="p">;</span>
+                <span class="k">let</span> <span class="n">relation_desc</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">relation_rel</span><span class="p">)</span><span class="py">.ri_RelationDesc</span><span class="p">;</span>
+
+                <span class="k">let</span> <span class="n">tuple_new_slot</span> <span class="o">=</span> <span class="o">*</span><span class="p">((</span><span class="o">*</span><span class="n">relation_rel</span><span class="p">)</span><span class="py">.ri_newTupleSlot</span><span class="p">);</span>
+
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+    <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Using <code class="language-plaintext highlighter-rouge">estate.es_result_relations</code> we access <a href="https://github.com/postgres/postgres/blob/da11a14e0c79af98869ce8929fa9bdfe7cc690cb/src/include/nodes/execnodes.h#L387-L388">ResultRelInfo</a>, this contains information about a result relation i.e contains information about our updated table.</p>
+
+<p>Since <code class="language-plaintext highlighter-rouge">estate.es_result_relations</code> is a null pointer, we have to check if is not null and then we fully dereference the null pointer to access <code class="language-plaintext highlighter-rouge">ri_RelationDesc</code> which data reperesentation is a <a href="https://github.com/postgres/postgres/blob/da11a14e0c79af98869ce8929fa9bdfe7cc690cb/src/include/utils/rel.h#L54">ReltionData</a>; it holds the cached metadata of the table.</p>
+
+<p>Whenever there is an update, postgres creates a new Tuple and then updates the old tuple by setting it to be invisible and then later runs a vacuum process to eradicate the old tuple. This is just a one-line summary of what the update process entails for more details about check <a href="https://www.interdb.jp/pg/pgsql05/03.html">interdb</a></p>
+
+<p><code class="language-plaintext highlighter-rouge">*((*relation_rel).ri_newTupleSlot)</code> is used to access the new tuple represented as <a href="https://github.com/postgres/postgres/blob/da11a14e0c79af98869ce8929fa9bdfe7cc690cb/src/include/executor/tuptable.h#L115-L116">TupleTableSlot</a>.</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">fn</span> <span class="nf">executor_end</span><span class="p">(</span><span class="o">......</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">........</span>
+    <span class="k">if</span> <span class="o">!</span><span class="n">result_rel_info</span><span class="nf">.is_null</span><span class="p">()</span> <span class="p">{</span>
+        <span class="o">.........</span><span class="py">.
+        if</span> <span class="o">!</span><span class="n">relation_desc</span><span class="nf">.is_null</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">relation_descp</span><span class="p">:</span> <span class="nn">pgrx</span><span class="p">::</span><span class="nn">prelude</span><span class="p">::</span><span class="nn">pg_sys</span><span class="p">::</span><span class="n">RelationData</span> <span class="o">=</span> <span class="o">*</span><span class="n">relation_desc</span><span class="p">;</span>
+            <span class="k">let</span> <span class="n">tuple_desc</span> <span class="o">=</span> <span class="nn">PgTupleDesc</span><span class="p">::</span><span class="nf">from_pg_unchecked</span><span class="p">(</span><span class="n">relation_descp</span><span class="py">.rd_att</span><span class="p">);</span>
+            <span class="k">let</span> <span class="n">natts</span> <span class="o">=</span> <span class="n">tuple_desc</span><span class="py">.natts</span><span class="p">;</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">0</span><span class="o">..</span><span class="n">natts</span> <span class="p">{</span>
+                <span class="k">let</span> <span class="n">is_null</span> <span class="o">=</span> <span class="o">*</span><span class="n">tuple_new_slot</span><span class="py">.tts_isnull</span><span class="nf">.add</span><span class="p">(</span><span class="n">i</span> <span class="k">as</span> <span class="nb">usize</span><span class="p">);</span>
+                <span class="k">if</span> <span class="o">!</span><span class="n">is_null</span> <span class="p">{</span>
+                    <span class="k">let</span> <span class="n">desc_pointer</span> <span class="o">=</span> <span class="n">tuple_desc</span><span class="py">.attrs</span><span class="nf">.as_ptr</span><span class="p">();</span>
+                    <span class="k">let</span> <span class="n">desc_attr</span> <span class="o">=</span> <span class="o">*</span><span class="n">desc_pointer</span><span class="nf">.add</span><span class="p">(</span><span class="n">i</span> <span class="k">as</span> <span class="nb">usize</span><span class="p">);</span>
+                    <span class="k">let</span> <span class="n">attr</span> <span class="o">=</span> <span class="n">desc_attr</span><span class="nf">.name</span><span class="p">();</span>
+                    <span class="k">let</span> <span class="n">value_pointer</span> <span class="o">=</span> <span class="o">*</span><span class="n">tuple_new_slot</span><span class="py">.tts_values</span><span class="nf">.add</span><span class="p">(</span><span class="n">i</span> <span class="k">as</span> <span class="nb">usize</span><span class="p">);</span>
+                    <span class="k">let</span> <span class="k">mut</span> <span class="n">foutoid</span><span class="p">:</span> <span class="n">Oid</span> <span class="o">=</span> <span class="nn">Oid</span><span class="p">::</span><span class="nf">default</span><span class="p">();</span>
+                    <span class="k">let</span> <span class="k">mut</span> <span class="n">typisvarlena</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="k">false</span><span class="p">;</span>
+                    <span class="k">let</span> <span class="n">typoid</span><span class="p">:</span> <span class="n">Oid</span> <span class="o">=</span> <span class="n">desc_attr</span><span class="py">.atttypid</span><span class="p">;</span>
+                    <span class="nf">getTypeOutputInfo</span><span class="p">(</span><span class="n">typoid</span><span class="p">,</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">foutoid</span><span class="p">,</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">typisvarlena</span><span class="p">);</span>
+                    <span class="k">let</span> <span class="n">output</span> <span class="o">=</span> <span class="nf">OidOutputFunctionCall</span><span class="p">(</span><span class="n">foutoid</span><span class="p">,</span> <span class="n">value_pointer</span><span class="p">);</span>
+                    <span class="k">let</span> <span class="n">output_value</span> <span class="o">=</span> <span class="nn">CStr</span><span class="p">::</span><span class="nf">from_ptr</span><span class="p">(</span><span class="n">output</span><span class="p">);</span>
+                    <span class="k">let</span> <span class="n">output_value</span> <span class="o">=</span> <span class="n">output_value</span>
+                        <span class="nf">.to_str</span><span class="p">()</span>
+                        <span class="nf">.expect</span><span class="p">(</span><span class="s">"Failed to convert Postgres query string for rust"</span><span class="p">);</span>
+
+                    <span class="k">if</span> <span class="n">attr</span> <span class="o">==</span> <span class="n">expected_column</span> <span class="p">{</span>
+                        <span class="k">self</span><span class="py">.update_receiver.value</span> <span class="o">=</span> <span class="nf">Some</span><span class="p">(</span><span class="n">output_value</span><span class="nf">.to_string</span><span class="p">())</span>
+                        <span class="k">self</span><span class="o">..</span><span class="n">update_receiver</span><span class="py">.value</span> <span class="o">=</span> <span class="n">attr</span><span class="nf">.to_string</span><span class="p">();</span>
+                    <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">relation_desc</code> is a null pointer to the relation (table) cache entry, hence we need to confirm if it’s not null, after which we go ahead to dereference <code class="language-plaintext highlighter-rouge">relation_desc</code>, and then from <code class="language-plaintext highlighter-rouge">relation_descp</code> we obtain the tuple descriptor (describing each table rows) <code class="language-plaintext highlighter-rouge">relation_descp.rd_att</code>. The function <code class="language-plaintext highlighter-rouge">from_pg_unchecked</code> wraps the tuple descriptor <a href="https://github.com/postgres/postgres/blob/da11a14e0c79af98869ce8929fa9bdfe7cc690cb/src/include/access/tupdesc.h#L49-L50">TupleDesc</a> into <a href="https://github.com/pgcentralfoundation/pgrx/blob/fe9ab69921e04b32a3d1619dff662e0f38549a06/pgrx/src/tupdesc.rs#L17-L18">PgTupleDesc</a> so has to monitor it reference count and drop it whenever the reference count is 0.</p>
+
+<p>For our implementation we need to access a specific column to obtain the value to populate a defined redis key, to do that we need to loop through each tuples (rows) and get that specific column, hence we achieve this via <code class="language-plaintext highlighter-rouge">tuple_desc.natts</code>, where <code class="language-plaintext highlighter-rouge">natts</code> is the number of attributes in that tuple.</p>
+
+<p>Looping through <code class="language-plaintext highlighter-rouge">natts</code>, first we check if the attribute we are about to access is valid and not null, if valid, we obtain the list of attributes from the tuple descriptor <code class="language-plaintext highlighter-rouge">tuple_desc</code>, and then using the current natt index we obtain the name of the attribute using <code class="language-plaintext highlighter-rouge">let attr = desc_attr.name();</code></p>
+
+<p><code class="language-plaintext highlighter-rouge">tuple_new_slot.tts_values</code> contains per attribute values, using the natt index, we will fetch the attribute value, The <code class="language-plaintext highlighter-rouge">atts_values.add(i)</code> returns a Datum, recall that in the Planner hook we made mention of how to fetch the actual value of a Datum. And once the Dtaum is transformed we convert the result to a proper rust string.</p>
+
+<p>Lastly, we check if the column name we fetched is equal to our expected column and we then the column name and its value in <code class="language-plaintext highlighter-rouge">self.update_receiver</code></p>
+
+<h2 id="background-process-and-shared-memory">Background Process and Shared Memory</h2>
+
+<p>We need a way to communicate with our redis server, initialize the redis server, and send out the data we’ve gathered so far to redis.</p>
+
+<p><img src="https://www.interdb.jp/pg/pgsql02/fig-2-01.png" alt="" /></p>
+
+<p>source. <a href="https://www.interdb.jp/pg/pgsql02/01.html">interdb</a></p>
+
+<p>The image above shows the postgres process architecture. The process architecture shows that communication between processes is done via <code class="language-plaintext highlighter-rouge">shared memory</code>. The hooks we’ve created so far are in the backend process, including the data we’ve gathered are all available inside the backend process, to make the background writer have access to it, we need to save them in a shared memory. Also, why background writer, can’t we just call the redis server inside the background process, yes that’s possible, but we won’t want to spend more time executing a transaction and interfering with other transaction execution time.</p>
+
+<p>To store the variables in shared memory we will follow the following steps:</p>
+
+<ol>
+  <li>Create a struct type of how to save this data</li>
+  <li>Impl shared memory trait for the struct type</li>
+  <li>create a new method to create new info</li>
+  <li>Create a Lock variable for the struct to manage how it is accessed concurrently</li>
+  <li>Create utility functions to manage how data is added to the lock variable and also manage how it is managed</li>
+  <li>Initialize it in our shared memory, to store the type in the shared memory</li>
+</ol>
+
+<p>Create a file <code class="language-plaintext highlighter-rouge">src/prshmem.rs</code> for our shared memory code</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">use</span> <span class="nn">pgrx</span><span class="p">::{</span><span class="n">pg_guard</span><span class="p">,</span> <span class="n">pg_shmem_init</span><span class="p">,</span> <span class="nn">prelude</span><span class="p">::</span><span class="o">*</span><span class="p">,</span> <span class="nn">shmem</span><span class="p">::</span><span class="o">*</span><span class="p">,</span> <span class="n">warning</span><span class="p">,</span> <span class="n">PGRXSharedMemory</span><span class="p">,</span> <span class="n">PgLwLock</span><span class="p">};</span>
+
+<span class="c1">// step 1</span>
+<span class="nd">#[derive(Copy,</span> <span class="nd">Clone)]</span>
+<span class="k">pub</span> <span class="k">struct</span> <span class="n">Info</span> <span class="p">{</span>
+    <span class="k">pub</span> <span class="n">key</span><span class="p">:</span> <span class="p">[</span><span class="nb">char</span><span class="p">;</span> <span class="mi">127</span><span class="p">],</span> <span class="c1">// data is store on stack so size most be manually manage</span>
+    <span class="k">pub</span> <span class="n">value</span><span class="p">:</span> <span class="p">[</span><span class="nb">char</span><span class="p">;</span> <span class="mi">127</span><span class="p">],</span>
+    <span class="k">pub</span> <span class="n">key_length</span><span class="p">:</span> <span class="nb">i8</span><span class="p">,</span> <span class="c1">// specify length to easily; access the key when needed</span>
+    <span class="k">pub</span> <span class="n">value_length</span><span class="p">:</span> <span class="nb">i8</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">// step 2</span>
+<span class="k">unsafe</span> <span class="k">impl</span> <span class="n">PGRXSharedMemory</span> <span class="k">for</span> <span class="n">Info</span> <span class="p">{</span>
+    <span class="k">pub</span> <span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">key_string</span><span class="p">:</span> <span class="o">&amp;</span><span class="nb">str</span><span class="p">,</span> <span class="n">value_string</span><span class="p">:</span> <span class="o">&amp;</span><span class="nb">str</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="n">Info</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="sc">' '</span><span class="p">;</span> <span class="mi">127</span><span class="p">];</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">in</span> <span class="n">key_string</span><span class="nf">.chars</span><span class="p">()</span><span class="nf">.enumerate</span><span class="p">()</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="n">value</span> <span class="o">=</span> <span class="p">[</span><span class="sc">' '</span><span class="p">;</span> <span class="mi">127</span><span class="p">];</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">in</span> <span class="n">value_string</span><span class="nf">.chars</span><span class="p">()</span><span class="nf">.enumerate</span><span class="p">()</span> <span class="p">{</span>
+            <span class="n">value</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">Info</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">,</span>
+            <span class="n">key_length</span><span class="p">:</span> <span class="n">key_string</span><span class="nf">.len</span><span class="p">()</span> <span class="k">as</span> <span class="nb">i8</span><span class="p">,</span>
+            <span class="n">value</span><span class="p">,</span>
+            <span class="n">value_length</span><span class="p">:</span> <span class="n">value_string</span><span class="nf">.len</span><span class="p">()</span> <span class="k">as</span> <span class="nb">i8</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// step 3</span>
+<span class="k">pub</span> <span class="k">static</span> <span class="n">REDIS_BUFFER</span><span class="p">:</span> <span class="n">PgLwLock</span><span class="o">&lt;</span><span class="nn">heapless</span><span class="p">::</span><span class="nb">Vec</span><span class="o">&lt;</span><span class="n">Info</span><span class="p">,</span> <span class="mi">400</span><span class="o">&gt;&gt;</span> <span class="o">=</span> <span class="nn">PgLwLock</span><span class="p">::</span><span class="nf">new</span><span class="p">();</span>
+
+<span class="c1">// step 4</span>
+<span class="k">pub</span> <span class="k">fn</span> <span class="nf">move_redis_data</span><span class="p">()</span> <span class="k">-&gt;</span> <span class="nb">Vec</span><span class="o">&lt;</span><span class="n">Info</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="n">REDIS_BUFFER</span><span class="nf">.exclusive</span><span class="p">();</span>
+    <span class="k">let</span> <span class="n">r</span> <span class="o">=</span> <span class="n">vec</span><span class="nf">.iter</span><span class="p">()</span><span class="nf">.copied</span><span class="p">()</span><span class="py">.collect</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Vec</span><span class="o">&lt;</span><span class="n">Info</span><span class="o">&gt;&gt;</span><span class="p">();</span>
+    <span class="n">vec</span><span class="nf">.clear</span><span class="p">();</span>
+    <span class="n">r</span>
+<span class="p">}</span>
+
+<span class="k">pub</span> <span class="k">fn</span> <span class="nf">add_item</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Info</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">REDIS_BUFFER</span>
+        <span class="nf">.exclusive</span><span class="p">()</span>
+        <span class="nf">.push</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="nf">.unwrap_or_else</span><span class="p">(|</span><span class="n">_</span><span class="p">|</span> <span class="nd">warning!</span><span class="p">(</span><span class="s">"Vector is full, discarding update"</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="c1">// step 5</span>
+<span class="k">pub</span> <span class="k">fn</span> <span class="nf">init_redis_buffer</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nd">pg_shmem_init!</span><span class="p">(</span><span class="n">REDIS_BUFFER</span><span class="p">);</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>To create a Lock variable we make use of <code class="language-plaintext highlighter-rouge">PgLwLock</code> which is a rust wrapper for postgres <code class="language-plaintext highlighter-rouge">LWlock</code> which allows multiple readers to access the data, but a single writer at a time, and the writer must request exclusive access before updating the data. Hence in <code class="language-plaintext highlighter-rouge">move_redis_data</code> and <code class="language-plaintext highlighter-rouge">add_item</code> we make use a call to <code class="language-plaintext highlighter-rouge">REDIS_BUFFER.exclusive()</code> to have access.</p>
+
+<p><strong>pg_shmem_init</strong> function macro is used to initialize our newly created type in shared memory for later use.</p>
+
+<p>Our shared memory variable is ready. another question will be, when and where should we make a call to store our data inside a shared memory, should we do that in <code class="language-plaintext highlighter-rouge">executor_end</code> hook? what if the query transaction fails for no reason before committing? how do we manage that? should we deal with Write-ahead-log?</p>
+
+<p>To make the project not as complex as it should be, we decided to make use of the <code class="language-plaintext highlighter-rouge">commit</code> hook, with this hook we only make sure that data is only saved to shared memory when we are sure that the updated tuple is committed and also clear out the variable, once the transaction is aborted.</p>
+
+<p>With this, we will update our hooks code in <code class="language-plaintext highlighter-rouge">src/lib.rs</code></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">pub</span> <span class="k">mod</span> <span class="n">prshmem</span><span class="p">;</span>
+
+<span class="k">impl</span> <span class="n">PgHooks</span> <span class="k">for</span> <span class="n">PRHook</span> <span class="p">{</span>
+    <span class="k">fn</span> <span class="nf">commit</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="p">}</span>
+
+    <span class="k">fn</span> <span class="nf">abort</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="p">}</span>
+
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>For commit hook, recall that we are saving the updated tuple data needed for redis value in <code class="language-plaintext highlighter-rouge">self.update_receiver</code> and we are storing the query statement args in <code class="language-plaintext highlighter-rouge">self.where_clause_receiver</code>, the process in commit hooks is to get the data from this variable and then store them in the shared memory</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">impl</span> <span class="n">PgHooks</span> <span class="k">for</span> <span class="n">PRHook</span> <span class="p">{</span>
+    <span class="o">........</span>
+    <span class="k">fn</span> <span class="nf">commit</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// step 1</span>
+        <span class="k">if</span> <span class="k">self</span><span class="py">.update_receiver</span><span class="nf">.is_some</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">update_receiver</span> <span class="o">=</span> <span class="k">self</span><span class="py">.update_receiver</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+            <span class="c1">// step 2</span>
+            <span class="k">let</span> <span class="n">key_string</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="k">self</span><span class="py">.where_clause_receiver</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">()</span><span class="na">.1</span><span class="p">);</span>
+            <span class="k">if</span> <span class="n">update_receiver</span><span class="py">.value</span><span class="nf">.is_some</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">let</span> <span class="n">t</span> <span class="o">=</span> <span class="n">update_receiver</span><span class="py">.value</span><span class="nf">.as_ref</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+                <span class="c1">// step 3</span>
+                <span class="nf">add_item</span><span class="p">(</span><span class="nn">Info</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="n">key_string</span><span class="p">,</span> <span class="n">t</span><span class="p">));</span>
+            <span class="p">}</span>
+            <span class="c1">// step 4</span>
+            <span class="k">self</span><span class="py">.update_receiver</span> <span class="o">=</span> <span class="nb">None</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="k">self</span><span class="py">.where_clause_receiver</span><span class="nf">.is_some</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">self</span><span class="py">.where_clause_receiver</span> <span class="o">=</span> <span class="nb">None</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Here are the steps as shown in the code:</p>
+
+<ol>
+  <li>check if <code class="language-plaintext highlighter-rouge">self.update_receiver</code> is not empty</li>
+  <li>extract the value needed as a key from <code class="language-plaintext highlighter-rouge">self.where_clause_receiver</code></li>
+  <li>create an <code class="language-plaintext highlighter-rouge">Info</code> new struct and add it to <code class="language-plaintext highlighter-rouge">REDIS_BUFFER</code> using <code class="language-plaintext highlighter-rouge">add_item</code></li>
+  <li>clear out <code class="language-plaintext highlighter-rouge">self.update_receiver</code> and <code class="language-plaintext highlighter-rouge">self.where_clause_receiver</code></li>
+</ol>
+
+<p>For the abort hook we just need to check if the update_receiver and where_clauese_receiver are not empty and if so set them to None to make them empty</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">impl</span> <span class="n">PgHooks</span> <span class="k">for</span> <span class="n">PRHook</span> <span class="p">{</span>
+    <span class="o">........</span>
+    <span class="k">fn</span> <span class="nf">abort</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="k">self</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Set all the objects to null if transaction aborts.</span>
+        <span class="k">if</span> <span class="k">self</span><span class="py">.update_receiver</span><span class="nf">.is_some</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">self</span><span class="py">.update_receiver</span> <span class="o">=</span> <span class="nb">None</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="k">self</span><span class="py">.where_clause_receiver</span><span class="nf">.is_some</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">self</span><span class="py">.where_clause_receiver</span> <span class="o">=</span> <span class="nb">None</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>Share memory is now populated with our required data, we now need to call the background writer and make a call to redis. First, we need to initialize the Background writer in <code class="language-plaintext highlighter-rouge">_PG_init</code></p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">use</span> <span class="nn">pgrx</span><span class="p">::</span><span class="nn">bgworkers</span><span class="p">::{</span><span class="n">BackgroundWorker</span><span class="p">,</span> <span class="n">BackgroundWorkerBuilder</span><span class="p">,</span> <span class="n">SignalWakeFlags</span><span class="p">};</span>
+
+
+<span class="nd">#[pg_guard]</span>
+<span class="k">pub</span> <span class="k">unsafe</span> <span class="k">extern</span> <span class="s">"C"</span> <span class="k">fn</span> <span class="nf">_PG_init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">.....</span>
+    <span class="nf">init_redis_buffer</span><span class="p">()</span>
+    <span class="nn">BackgroundWorkerBuilder</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="s">"PGRedis Experiment"</span><span class="p">)</span>
+        <span class="nf">.set_function</span><span class="p">(</span><span class="s">"postgres_redis_background"</span><span class="p">)</span>
+        <span class="nf">.set_library</span><span class="p">(</span><span class="s">"postgres_redis"</span><span class="p">)</span>
+        <span class="nf">.enable_shmem_access</span><span class="p">(</span><span class="nb">None</span><span class="p">)</span>
+        <span class="nf">.load</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>recall that in <code class="language-plaintext highlighter-rouge">src/prshmem.rs</code> we wrote a function <code class="language-plaintext highlighter-rouge">init_redis_buffer</code> to initialize shared memory without a new type. in _PG_init we make a call to it and also we create a Background worker with the name <code class="language-plaintext highlighter-rouge">PGRedis Experiment</code> and then we set the function this BackgroundWriter should manage which is <code class="language-plaintext highlighter-rouge">postgres_redis_background</code>.</p>
+
+<p>We also make a call to <code class="language-plaintext highlighter-rouge">set_library</code>; this notifies the name of the shared library where the function managed by the background writer exists in. We then call <code class="language-plaintext highlighter-rouge">.load</code> to register the background writer and start it when needed</p>
+
+<p>let’s update <code class="language-plaintext highlighter-rouge">src/lib.rs</code>, with the function managed by the background writer</p>
+
+<div class="language-rs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">#[pg_guard]</span>
+<span class="nd">#[no_mangle]</span>
+<span class="k">pub</span> <span class="k">extern</span> <span class="s">"C"</span> <span class="k">fn</span> <span class="nf">postgres_redis_background</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// Step 1</span>
+    <span class="nn">BackgroundWorker</span><span class="p">::</span><span class="nf">attach_signal_handlers</span><span class="p">(</span><span class="nn">SignalWakeFlags</span><span class="p">::</span><span class="n">SIGHUP</span> <span class="p">|</span> <span class="nn">SignalWakeFlags</span><span class="p">::</span><span class="n">SIGTERM</span><span class="p">);</span>
+    <span class="k">log</span><span class="o">!</span><span class="p">(</span>
+        <span class="s">"Hello from inside the {} BGWorker"</span><span class="p">,</span>
+        <span class="nn">BackgroundWorker</span><span class="p">::</span><span class="nf">get_name</span><span class="p">()</span>
+    <span class="p">);</span>
+    <span class="c1">//step 2</span>
+    <span class="k">if</span> <span class="nn">gucs</span><span class="p">::</span><span class="n">PGD_REDIS_URL</span><span class="nf">.get</span><span class="p">()</span><span class="nf">.is_none</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">log</span><span class="o">!</span><span class="p">(</span><span class="s">"Redis URL is not set"</span><span class="p">);</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">let</span> <span class="n">url</span> <span class="o">=</span> <span class="nn">gucs</span><span class="p">::</span><span class="n">PGD_REDIS_URL</span>
+        <span class="nf">.get</span><span class="p">()</span>
+        <span class="nf">.unwrap</span><span class="p">()</span>
+        <span class="nf">.to_str</span><span class="p">()</span>
+        <span class="nf">.expect</span><span class="p">(</span><span class="s">"URL extraction failed"</span><span class="p">);</span>
+
+    <span class="c1">// step 3</span>
+    <span class="k">let</span> <span class="n">client</span> <span class="o">=</span> <span class="nn">redis</span><span class="p">::</span><span class="nn">Client</span><span class="p">::</span><span class="nf">open</span><span class="p">(</span><span class="n">url</span><span class="p">)</span><span class="nf">.unwrap</span><span class="p">();</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">connection</span> <span class="o">=</span> <span class="n">client</span><span class="nf">.get_connection</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">pipe</span> <span class="o">=</span> <span class="nn">redis</span><span class="p">::</span><span class="nf">pipe</span><span class="p">();</span>
+
+    <span class="c1">// step 4</span>
+    <span class="k">let</span> <span class="n">delay</span> <span class="o">=</span> <span class="nn">gucs</span><span class="p">::</span><span class="n">PGD_BG_DELAY</span><span class="nf">.get</span><span class="p">()</span> <span class="k">as</span> <span class="nb">u64</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="nn">BackgroundWorker</span><span class="p">::</span><span class="nf">wait_latch</span><span class="p">(</span><span class="nf">Some</span><span class="p">(</span><span class="nn">Duration</span><span class="p">::</span><span class="nf">from_secs</span><span class="p">(</span><span class="n">delay</span><span class="p">)))</span> <span class="p">{</span>
+        <span class="c1">// step 5</span>
+        <span class="k">let</span> <span class="n">results</span> <span class="o">=</span> <span class="nf">move_redis_data</span><span class="p">();</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">results</span><span class="nf">.iter</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">key</span><span class="p">:</span> <span class="nb">String</span> <span class="o">=</span> <span class="n">i</span><span class="py">.key</span><span class="p">[</span><span class="mi">0</span><span class="o">..</span><span class="n">i</span><span class="py">.key_length</span> <span class="k">as</span> <span class="nb">usize</span><span class="p">]</span><span class="nf">.iter</span><span class="p">()</span><span class="nf">.collect</span><span class="p">();</span>
+            <span class="k">let</span> <span class="n">value</span><span class="p">:</span> <span class="nb">String</span> <span class="o">=</span> <span class="n">i</span><span class="py">.value</span><span class="p">[</span><span class="mi">0</span><span class="o">..</span><span class="n">i</span><span class="py">.value_length</span> <span class="k">as</span> <span class="nb">usize</span><span class="p">]</span><span class="nf">.iter</span><span class="p">()</span><span class="nf">.collect</span><span class="p">();</span>
+            <span class="k">log</span><span class="o">!</span><span class="p">(</span><span class="s">"From bg: {key} =&gt; {value}"</span><span class="p">);</span>
+            <span class="n">pipe</span><span class="nf">.set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span><span class="nf">.ignore</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">results</span><span class="nf">.len</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">_</span><span class="p">:</span> <span class="p">()</span> <span class="o">=</span> <span class="n">pipe</span><span class="nf">.query</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">connection</span><span class="p">)</span><span class="nf">.unwrap</span><span class="p">();</span>
+            <span class="n">pipe</span><span class="nf">.clear</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>For the first step 1; we make a call to <code class="language-plaintext highlighter-rouge">attach_signal_handlers</code>, this helps postgres to handle the signal. for this we attach signals <code class="language-plaintext highlighter-rouge">SIGHUP</code> (signal sent to a process when its controlling terminal is closed) and <code class="language-plaintext highlighter-rouge">SIGTERM</code> (termination signal sent to a process, but allows the process to perform some cleanup before exiting). Postgres has a special signal handler that performs specific operations whenever this signal is received.</p>
+
+<p>Step 2; we check if a redis URL <code class="language-plaintext highlighter-rouge">PGD_REDIS_URL</code> is configured and if yes, we extract the redis URL into a defined variable <code class="language-plaintext highlighter-rouge">url</code></p>
+
+<p>step 3; we initialize the redis connection</p>
+
+<p>step 4: we fetch a configured delay time for our Background writer, normally postgres have a delay time to which a background writer is called after a successive call. We created the custom delay to manage the time when BackgroundWriter is called as we want. Note: that when discussing GUCS we never define the <code class="language-plaintext highlighter-rouge">PGD_BG_DELAY</code>, looking at the custom env variables we’ve created, try to create a new one for <code class="language-plaintext highlighter-rouge">PGD_BG_DELAY</code></p>
+
+<p>step 5; Firstly we fetch data from stored in Shared memory via <code class="language-plaintext highlighter-rouge">move_redis_data</code> and then loop through the data and send it to redis.</p>
+
+<h2 id="running-the-code">Running the code</h2>
+
+<p>We need to first update <code class="language-plaintext highlighter-rouge">postgresql.conf</code> and set the <code class="language-plaintext highlighter-rouge">shared_preload_libraries = 'postgres_redis'	</code>. To get the location of the data directory for your current pgrx postgres server run the following</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo pgrx run pg14
+
+<span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># show data_directory;</span>
+      data_directory
+<span class="nt">--------------------------</span>
+ /Users/mac/.pgrx/data-14
+<span class="o">(</span>1 row<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Then you can locate the directory and then locate <code class="language-plaintext highlighter-rouge">postgresql.conf</code> to update the configuration, and here you can decide to set the config variables needed;</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>postgres_redis.redis_url = 'redis://localhost:6379'
+postgres_redis.redis_table = 'test'
+postgres_redis.key_column = 'title'
+postgres_redis.value_column = 'description'
+</code></pre></div></div>
+
+<p>or you can use sql query to set the config and it will update <code class="language-plaintext highlighter-rouge">postgresql.auto.conf</code></p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo pgrx run pg14
+
+<span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># ALTER SYSTEM SET postgres_redis.key_column = 'title';</span>
+ALTER SYSTEM
+<span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># ALTER SYSTEM SET postgres_redis.value_column = 'description';</span>
+ALTER SYSTEM
+<span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># ALTER SYSTEM SET postgres_redis.redis_table = 'test';</span>
+</code></pre></div></div>
+
+<p>Once all that is done we can now, initialize our extension</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cargo pgrx run pg14
+
+<span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># create extension postgres_redis;</span>
+CREATE EXTENSION
+
+</code></pre></div></div>
+
+<p>In the same terminal context let’s update a table</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">postgres_redis</span><span class="o">=</span><span class="c"># update test set description= 'updated for redis test' where title='Fox';</span>
+UPDATE 1
+</code></pre></div></div>
+
+<p>To confirm that everything is done properly, let’s check if redis contains the key value. We should expect redis to have a key <code class="language-plaintext highlighter-rouge">Fox</code> and a value <code class="language-plaintext highlighter-rouge">updated for redis test</code></p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>redis-cli
+
+127.0.0.1:6379&gt; GET Fox
+<span class="s2">"updated for redis test"</span>
+</code></pre></div></div>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This being my first Rust and postgres extension, there was a lot to learn, especially when threading between C and Rust, I learned a lot about foreign function interface (FFI), how to cast between pointers and the like. This article only focuses on the postgres part and assumes you the reader have a rust knowledge.</p>
+
+<p>We were able to delve into postgres and touch some of its internals; we got to see how to fetch updated tuples from postgres, convert Datum to the actual value, and handle query statements, and fetch data within query expressions.</p>
+
+<p>Well, we never get to talk about handling select queries. To know about that and some of the retrospective designs for this project visit this <a href="https://systemeng-learning.github.io/database/postgres-redis/">link</a></p>
+
+<p>The code source is available <a href="https://github.com/systemEng-Learning/postgres-redis">here</a></p>
+
+  </div>
+
+  <footer class="post-footer">
+    <a href="/blog">← all writing</a>
+    
+    <a href="/blog">database</a>
+    
+  </footer>
+</article>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 Stephen Oni</p>
+    <div class="footer-links">
+      <a href="https://github.com/steveoni" target="_blank" rel="noopener">github</a>
+      <a href="https://twitter.com/steveoni" target="_blank" rel="noopener">twitter</a>
+      <a href="https://linkedin.com/in/stephen-oni" target="_blank" rel="noopener">linkedin</a>
+      <a href="mailto:stephenoni2@gmail.com">email</a>
+    </div>
+  </footer>
+
+</body>
+</html>

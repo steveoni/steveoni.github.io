@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Building Network tunnel in Rust · Stephen Oni</title>
+  <meta name="description" content="A novice's dance amidst binary symphony" />
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Building Network tunnel in Rust | Stephen Oni</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Building Network tunnel in Rust" />
+<meta name="author" content="Stephen Oni" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="It all started from picking up wireguard white paper and trying to setup wireguard and see how it works.New words and concept here and there, then decided to build a simple network tunnel in rust just to understand some of the workflow of wireguard from user-space standpoint." />
+<meta property="og:description" content="It all started from picking up wireguard white paper and trying to setup wireguard and see how it works.New words and concept here and there, then decided to build a simple network tunnel in rust just to understand some of the workflow of wireguard from user-space standpoint." />
+<link rel="canonical" href="http://localhost:4000/network/network-tunnel-in-rust/" />
+<meta property="og:url" content="http://localhost:4000/network/network-tunnel-in-rust/" />
+<meta property="og:site_name" content="Stephen Oni" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-07-05T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Building Network tunnel in Rust" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Stephen Oni"},"dateModified":"2024-07-05T00:00:00+01:00","datePublished":"2024-07-05T00:00:00+01:00","description":"It all started from picking up wireguard white paper and trying to setup wireguard and see how it works.New words and concept here and there, then decided to build a simple network tunnel in rust just to understand some of the workflow of wireguard from user-space standpoint.","headline":"Building Network tunnel in Rust","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/network/network-tunnel-in-rust/"},"url":"http://localhost:4000/network/network-tunnel-in-rust/"}</script>
+<!-- End Jekyll SEO tag -->
+
+  <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── tokens ───────────────────────────────────────────── */
+    :root {
+      --bg:        #0e0e10;
+      --surface:   #141416;
+      --border:    #222226;
+      --text:      #e8e8e4;
+      --muted:     #888884;
+      --subtle:    #444440;
+      --accent:    #a8c5a0;   /* sage green — calm, natural */
+      --link:      #a8c5a0;
+      --link-hover:#c8e5c0;
+      --code-bg:   #131315;
+      --max-w:     680px;
+    }
+
+    /* ── reset ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── nav ──────────────────────────────────────────────── */
+    .site-nav {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .site-nav .brand {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+    .site-nav .brand a { color: inherit; }
+    .site-nav .brand a:hover { text-decoration: none; color: var(--accent); }
+    .site-nav .links { display: flex; gap: 1.75rem; }
+    .site-nav .links a {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .site-nav .links a:hover { color: var(--text); text-decoration: none; }
+    .site-nav .links a.active { color: var(--text); }
+
+    /* ── main content ─────────────────────────────────────── */
+    main {
+      max-width: var(--max-w);
+      margin: 3.5rem auto 5rem;
+      padding: 0 1.5rem;
+    }
+
+    /* ── footer ───────────────────────────────────────────── */
+    .site-footer {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .site-footer p { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links { display: flex; gap: 1.25rem; }
+    .site-footer .footer-links a { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── typography ───────────────────────────────────────── */
+    h1 { font-size: 1.6rem; font-weight: 500; line-height: 1.25; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    h2 { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+         color: var(--muted); margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1rem; font-weight: 500; margin: 1.25rem 0 0.4rem; }
+    h4 { font-size: 0.9rem; font-weight: 500; color: var(--muted); margin: 1rem 0 0.3rem; }
+    p  { margin: 0.75rem 0; color: var(--text); }
+    ul, ol { margin: 0.75rem 0 0.75rem 1.4rem; }
+    li { margin-bottom: 0.3rem; }
+
+    blockquote {
+      border-left: 2px solid var(--subtle);
+      padding: 0.3rem 1rem;
+      color: var(--muted);
+      margin: 1.25rem 0;
+      font-style: italic;
+    }
+
+    code {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    pre {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+    /* ── syntax highlighting (Rouge — custom dark) ────────── */
+    .highlight          { background: var(--code-bg); border-radius: 8px; border: 1px solid var(--border); margin: 1.25rem 0; overflow-x: auto; }
+    .highlight pre      { background: none; border: none; border-radius: 0; margin: 0; padding: 1.1rem 1.25rem; }
+
+    /* language label pill */
+    .highlight[data-lang]::before {
+      content: attr(data-lang);
+      display: block;
+      font-size: 0.68rem;
+      font-family: "DM Mono", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--subtle);
+      padding: 0.5rem 1.25rem 0;
+    }
+
+    /* token colours — readable on dark bg, WCAG AA compliant */
+    .highlight .c,  .highlight .cm, .highlight .c1, .highlight .cs  { color: #6a8060; font-style: italic; }  /* comments — muted sage */
+    .highlight .k,  .highlight .kd, .highlight .kn, .highlight .kp,
+    .highlight .kr, .highlight .kt                                   { color: #c792ea; }  /* keywords — soft violet */
+    .highlight .n,  .highlight .nb, .highlight .ni, .highlight .nl,
+    .highlight .nn, .highlight .nx                                   { color: #c3c3be; }  /* names — near-white */
+    .highlight .na                                                   { color: #82aaff; }  /* attr names — sky blue */
+    .highlight .nf, .highlight .fm, .highlight .py                  { color: #82aaff; }  /* function names — sky blue */
+    .highlight .nc, .highlight .nd, .highlight .ne                  { color: #ffcb6b; }  /* class/decorator — amber */
+    .highlight .s,  .highlight .s1,.highlight .s2, .highlight .sb,
+    .highlight .sc, .highlight .sd, .highlight .sh, .highlight .si,
+    .highlight .sx, .highlight .sr, .highlight .ss                  { color: #c3e88d; }  /* strings — soft lime */
+    .highlight .m,  .highlight .mf, .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il                                   { color: #f78c6c; }  /* numbers — warm orange */
+    .highlight .o,  .highlight .ow                                   { color: #89ddff; }  /* operators — ice blue */
+    .highlight .p,  .highlight .pi                                   { color: #89ddff; }  /* punctuation */
+    .highlight .err                                                   { color: #ff5572; background: none; }  /* errors */
+    .highlight .ge  { font-style: italic; }
+    .highlight .gs  { font-weight: bold; }
+    .highlight .cp                                                    { color: #ffcb6b; }  /* preprocessor — amber */
+    .highlight .gh, .highlight .gu                                   { color: var(--muted); font-weight: bold; }  /* diff headings */
+    .highlight .gd                                                    { color: #ff5572; background: rgba(255,85,114,0.08); display: block; }  /* diff deleted */
+    .highlight .gi                                                    { color: #c3e88d; background: rgba(195,232,141,0.08); display: block; }  /* diff inserted */
+
+    /* line numbers if enabled */
+    .highlight .gl { color: var(--subtle); padding-right: 1.2rem; user-select: none; }
+
+    img { max-width: 100%; border-radius: 8px; margin: 1.25rem 0; display: block; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--surface); color: var(--muted); font-weight: 500; }
+
+    /* ── divider label ────────────────────────────────────── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 3rem 0 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+  </style>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W9SDX6RR77"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-W9SDX6RR77');
+</script>
+
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="brand"><a href="/">Stephen Oni</a></div>
+    <div class="links">
+      <a href="/" >home</a>
+      <a href="/blog" class="active">writing</a>
+      <a href="/project" >projects</a>
+    </div>
+  </nav>
+
+  <main>
+    <style>
+  /* ── post layout ──────────────────────────────────────── */
+  .post-header {
+    margin-bottom: 2.75rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-header h1 {
+    font-size: 1.55rem;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    margin-bottom: 0.75rem;
+    color: var(--text); /* explicit — ensures full contrast */
+  }
+  .post-header .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .post-header .post-date {
+    font-size: 0.8rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+  }
+  .post-header .post-category {
+    font-size: 0.68rem;
+    font-family: "DM Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+
+  /* ── post body typography ─────────────────────────────── */
+  .post-content {
+    /* slightly warmer text for long-form reading */
+    --text: #ebebе7;
+  }
+  .post-content > * + * { margin-top: 0; }
+
+  .post-content p {
+    font-size: 1rem;
+    line-height: 1.85;
+    color: var(--text);
+    margin: 1rem 0;
+  }
+
+  /* headings inside post — stronger hierarchy */
+  .post-content h2 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 3rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-content h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 2rem 0 0.5rem;
+  }
+  .post-content h4 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin: 1.5rem 0 0.4rem;
+  }
+
+  /* lists */
+  .post-content ul,
+  .post-content ol {
+    margin: 1rem 0 1rem 1.5rem;
+    color: var(--text);
+  }
+  .post-content li { margin-bottom: 0.35rem; line-height: 1.8; }
+
+  /* blockquote — improved contrast */
+  .post-content blockquote {
+    border-left: 2px solid var(--accent);
+    padding: 0.5rem 1.1rem;
+    background: rgba(168, 197, 160, 0.06);
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0;
+  }
+  .post-content blockquote p {
+    color: #b4b4b0;   /* AA on dark bg */
+    font-style: italic;
+    margin: 0;
+  }
+
+  /* inline code — ensure contrast */
+  .post-content code {
+    color: #c3e88d;   /* soft lime — legible on #131315 */
+  }
+
+  /* ── images — accessible & constrained ───────────────── */
+  .post-content img {
+    max-width: 100%;
+    height: auto;
+    max-height: 520px;
+    object-fit: contain;
+    display: block;
+    margin: 2rem auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface); /* letterbox bg when image has alpha */
+  }
+
+  /* figure + figcaption for authored images */
+  .post-content figure {
+    margin: 2rem 0;
+  }
+  .post-content figure img {
+    margin: 0 auto 0.6rem;
+  }
+  .post-content figcaption {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    font-style: italic;
+    font-family: "DM Mono", monospace;
+  }
+
+  /* ── post footer nav ──────────────────────────────────── */
+  .post-footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .post-footer a {
+    font-size: 0.83rem;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    transition: color 0.15s;
+  }
+  .post-footer a:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+</style>
+
+<article aria-labelledby="post-title">
+  <header class="post-header">
+    <h1 id="post-title">Building Network tunnel in Rust</h1>
+    <div class="post-meta">
+      <time class="post-date" datetime="2024-07-05">
+        July 5, 2024
+      </time>
+      
+      <span class="post-category">network</span>
+      
+    </div>
+  </header>
+
+  <div class="post-content">
+    <p>It all started from picking up wireguard white paper and trying to setup wireguard and see how it works.New words and concept here and there, then decided to build a simple network tunnel in rust just to understand some of the workflow of wireguard from user-space standpoint.</p>
+
+<p>This article is a simple note on what i understood so far and its better illustrated in a way to grasp the whole gist.</p>
+
+<h2 id="tun-interface">Tun Interface</h2>
+
+<p>For simple illustration, i will start with using the OSI layer to show how the data flows</p>
+
+<p><img src="/assets/images/network-tunnel/osi.png" /></p>
+
+<p>Each of our operating systems, do have a network device interface and virtual network interface, this can be viewed by either using <code class="language-plaintext highlighter-rouge">ip</code> command or <code class="language-plaintext highlighter-rouge">ifconfig</code></p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ip addr
+
+1: lo0: <span class="nv">flags</span><span class="o">=</span>8049&lt;UP,LOOPBACK,RUNNING,MULTICAST&gt; mtu 16384
+	inet 127.0.0.1/8 lo0
+	inet6 ::1/128
+	inet6 fe80::1/64 scopeid 0x1
+
+
+2: en0: <span class="nv">flags</span><span class="o">=</span>8863&lt;UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
+	ether ad:f0:86:9c:5d:2f
+	inet6 fe90::7ad:a8b:cc20:268a/64 secured scopeid 0xf
+	inet 192.168.0.103/24 brd 192.168.0.255 en0
+
+</code></pre></div></div>
+
+<p>The above shows the loopback (lo) virtual nertwork interface used to manage localhost connection. Also we have <code class="language-plaintext highlighter-rouge">en0</code> this a network device inteface used to manage ethernet connection, macOs represent them with <code class="language-plaintext highlighter-rouge">en0</code> and on linux os they are represented as <code class="language-plaintext highlighter-rouge">eth0</code>.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">eth0</code> interface is assigned the ip address assign to us by the router using DHCP, and the mac address associated to this interface is the physical NIC address.</p>
+
+<p>We also have a routing table</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ip route
+
+default via 192.168.0.1 dev en0
+127.0.0.0/8 via 127.0.0.1 dev lo0
+127.0.0.1/32 via 127.0.0.1 dev lo0
+169.254.0.0/16 dev en0  scope <span class="nb">link</span>
+</code></pre></div></div>
+
+<p>This tells our device how to handle outgoing and incoming packet and what interface should be used to handle them. for example <code class="language-plaintext highlighter-rouge">default via 192.168.0.1 dev en0</code>; shows that any packet whose destination network isn’t specifically known should be sent to <code class="language-plaintext highlighter-rouge">en0</code> and <code class="language-plaintext highlighter-rouge">en0</code> is linked to my router at <code class="language-plaintext highlighter-rouge">192.168.0.1</code>, hence packet reaching <code class="language-plaintext highlighter-rouge">en0</code> will be sent to the router.</p>
+
+<p>Packet leaving <code class="language-plaintext highlighter-rouge">en0</code> or <code class="language-plaintext highlighter-rouge">eth0</code> interface will concpetually look like the image below, if we are to communicate with twitter</p>
+
+<p><img src="/assets/images/network-tunnel/osi1.png" /></p>
+
+<p>Also you can conceptualize network interface as points where packets or frames are sent and can then be handled either by the kernel or user space.</p>
+
+<p>Having that as our basics for network virtual and device interface; we are not limited to only those specific interfaces, we have the capacity to create ours, and that is where tunneling comes in.</p>
+
+<p><img src="/assets/images/network-tunnel/tun.png" /></p>
+
+<p>The image above demarcates the osi layer into <strong>user-pace</strong> and <strong>kernel-space</strong>, in simple terms it means space you, as a user have control over and the latter means space managed by the operating system internals.</p>
+
+<p>Tun interface is attached to the Network layer and the Tap is connected to the Data link layer, this helps to capture packets and frames to which user space can have access to.</p>
+
+<p>Focusing on tun interface let’s see how we can set that up:</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># create a un interface</span>
+<span class="nv">$ </span><span class="nb">sudo </span>ip tuntap add dev tun0 mode tun
+
+<span class="c"># Assign an ip address</span>
+<span class="nv">$ </span><span class="nb">sudo </span>ip addr add 10.0.0.1/24 dev tun0
+
+<span class="c"># Bring the TUN device up</span>
+<span class="nv">$ </span><span class="nb">sudo </span>ip <span class="nb">link set </span>dev tun0 up
+
+</code></pre></div></div>
+
+<p>Checking our list of interfaces to see if the tun interface is listed</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>ip addr
+
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    <span class="nb">link</span>/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+
+2: tun0: &lt;NO-CARRIER,POINTOPOINT,MULTICAST,NOARP,UP&gt; mtu 1500 qdisc pfifo_fast state DOWN group default qlen 500
+    <span class="nb">link</span>/none
+    inet 10.0.0.1/24 scope global tun0
+       valid_lft forever preferred_lft forever
+
+3: eth0@if5022: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default
+    <span class="nb">link</span>/ether 02:42:ac:1a:00:03 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 172.26.0.3/16 brd 172.26.255.255 scope global eth0
+       valid_lft forever preferred_lft forever
+</code></pre></div></div>
+
+<p>The tun device is added to the list of interfaces, but now it’s just there it is does nothing.</p>
+
+<pre><code class="language-shewl">
+$ ip route show
+
+default via 172.26.0.1 dev eth0
+10.0.0.0/24 dev tun0 proto kernel scope link src 10.0.0.1 linkdown
+</code></pre>
+
+<p>The ip route for tun0 shows that every packet with ip 10.X will be directed to <code class="language-plaintext highlighter-rouge">tun0</code>. we can setup an ip route for external network</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>route add <span class="nt">-host</span> 93.184.215.14/32 gw 10.0.0.1 dev tun0
+
+<span class="nv">$ </span>route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         172.26.0.1      0.0.0.0         UG    0      0        0 eth0
+10.0.0.0        0.0.0.0         255.255.255.0   U     0      0        0 tun0
+93.184.215.14   10.0.0.1        255.255.255.255 UGH   0      0        0 tun0
+</code></pre></div></div>
+
+<p>Hence, any time the desitnation ip is <code class="language-plaintext highlighter-rouge">93.184.215.14 </code> the tun0 interface will capture that to be used in the userspace.</p>
+
+<p>Coming to the userspace, the tun interface is exposed as a file descriptor</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="n">fd</span> <span class="o">=</span> <span class="k">match</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="nf">open</span><span class="p">(</span><span class="s">b"/dev/net/tun</span><span class="se">\0</span><span class="s">"</span><span class="nf">.as_ptr</span><span class="p">()</span> <span class="k">as</span> <span class="o">*</span><span class="k">const</span> <span class="n">_</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">)</span> <span class="p">}</span> <span class="p">{</span>
+            <span class="o">-</span><span class="mi">1</span> <span class="k">=&gt;</span> <span class="k">return</span> <span class="nf">Err</span><span class="p">(</span><span class="nn">Error</span><span class="p">::</span><span class="nf">Socket</span><span class="p">(</span><span class="nn">io</span><span class="p">::</span><span class="nn">Error</span><span class="p">::</span><span class="nf">last_os_error</span><span class="p">())),</span>
+            <span class="n">fd</span> <span class="k">=&gt;</span> <span class="n">fd</span><span class="p">,</span>
+        <span class="p">};</span>
+</code></pre></div></div>
+
+<p>the file name is <code class="language-plaintext highlighter-rouge">/dev/net/tun</code>, we read the file and then have a descriptor assigned to a variable <code class="language-plaintext highlighter-rouge">fd</code>. Well, the tun is not created yet, it need some ohter tools to make it possible to configure and spin up tun with our program and they are:</p>
+
+<ol>
+  <li>File descriptor from <code class="language-plaintext highlighter-rouge">/dev/net /tun</code></li>
+  <li>Socket: this helps to target the kernel network stack</li>
+  <li>ioctl : syscall to manipulate the underlying device parameters of special files</li>
+  <li>ifreq: socket interface used to configure network device interface.</li>
+</ol>
+
+<p>To create tun interface and then configure the tun device like we did using the <code class="language-plaintext highlighter-rouge">ip</code> command, we would first need to associate the <code class="language-plaintext highlighter-rouge">fd</code> descriptor created with the network interface, this to ensure that every network packet routed to the network interface will be directed to the file descriptor.</p>
+
+<p>To enable that, we need to set the ifreq struct has shown below:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">ifreq</span> <span class="p">{</span>
+   <span class="kt">char</span> <span class="n">ifr_name</span><span class="p">[</span><span class="n">IFNAMSIZ</span><span class="p">];</span> <span class="cm">/* Interface name */</span>
+   <span class="k">union</span> <span class="p">{</span>
+       <span class="k">struct</span> <span class="n">sockaddr</span> <span class="n">ifr_addr</span><span class="p">;</span>
+       <span class="k">struct</span> <span class="n">sockaddr</span> <span class="n">ifr_dstaddr</span><span class="p">;</span>
+       <span class="k">struct</span> <span class="n">sockaddr</span> <span class="n">ifr_broadaddr</span><span class="p">;</span>
+       <span class="k">struct</span> <span class="n">sockaddr</span> <span class="n">ifr_netmask</span><span class="p">;</span>
+       <span class="k">struct</span> <span class="n">sockaddr</span> <span class="n">ifr_hwaddr</span><span class="p">;</span>
+       <span class="kt">short</span>           <span class="n">ifr_flags</span><span class="p">;</span>
+       <span class="kt">int</span>             <span class="n">ifr_ifindex</span><span class="p">;</span>
+       <span class="kt">int</span>             <span class="n">ifr_metric</span><span class="p">;</span>
+       <span class="kt">int</span>             <span class="n">ifr_mtu</span><span class="p">;</span>
+       <span class="k">struct</span> <span class="n">ifmap</span>    <span class="n">ifr_map</span><span class="p">;</span>
+       <span class="kt">char</span>            <span class="n">ifr_slave</span><span class="p">[</span><span class="n">IFNAMSIZ</span><span class="p">];</span>
+       <span class="kt">char</span>            <span class="n">ifr_newname</span><span class="p">[</span><span class="n">IFNAMSIZ</span><span class="p">];</span>
+       <span class="kt">char</span>           <span class="o">*</span><span class="n">ifr_data</span><span class="p">;</span>
+   <span class="p">};</span>
+<span class="p">};</span>
+
+</code></pre></div></div>
+
+<p>For associating a file descriptor with the tun interface we only need to set the ifreq name</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// create a memory space for type ifreq initalized with zero</span>
+<span class="k">let</span> <span class="k">mut</span> <span class="n">ifr</span><span class="p">:</span> <span class="n">ifreq</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="nn">mem</span><span class="p">::</span><span class="nf">zeroed</span><span class="p">()</span> <span class="p">};</span>
+
+
+<span class="c1">// set the name of the on the interface</span>
+<span class="k">unsafe</span> <span class="p">{</span>
+    <span class="c1">// copy the name from dev_name_bytes</span>
+    <span class="c1">//into ifr.ifr_name without overlapping in memory</span>
+    <span class="nn">ptr</span><span class="p">::</span><span class="nf">copy_nonoverlapping</span><span class="p">(</span>
+        <span class="n">dev_name_bytes</span><span class="nf">.as_ptr</span><span class="p">()</span> <span class="k">as</span> <span class="o">*</span><span class="k">mut</span> <span class="nb">i8</span><span class="p">,</span>
+        <span class="n">ifr</span><span class="py">.ifr_name</span><span class="nf">.as_mut_ptr</span><span class="p">(),</span>
+        <span class="n">dev_name_bytes</span><span class="nf">.len</span><span class="p">(),</span>
+    <span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// set the flag to shouw the type of interface which is TUN</span>
+<span class="n">ifr</span><span class="py">.ifr_ifru.ifru_flags</span> <span class="o">=</span> <span class="n">IFF_TUN</span> <span class="p">|</span> <span class="n">IFF_NO_PI</span> <span class="p">|</span> <span class="n">IFF_MULTI_QUEUE</span><span class="p">;</span>
+
+<span class="k">if</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="nf">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">TUNSETIFF</span> <span class="k">as</span> <span class="n">_</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ifr</span><span class="p">)</span> <span class="p">}</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nf">Err</span><span class="p">(</span><span class="nn">Error</span><span class="p">::</span><span class="nf">IOCtl</span><span class="p">(</span><span class="nn">io</span><span class="p">::</span><span class="nn">Error</span><span class="p">::</span><span class="nf">last_os_error</span><span class="p">()));</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Focusing on <code class="language-plaintext highlighter-rouge">ifr.ifr_ifru.ifru_flags = IFF_TUN </code> after we’ve set the name of the Ifreq we set the flag to be tun device. and then the sys call <code class="language-plaintext highlighter-rouge">ioctl(fd, TUNSETIFF as _, &amp;ifr)</code>; makes a syscall to associate the tun device with the tun interface <code class="language-plaintext highlighter-rouge">ifr</code> with name <code class="language-plaintext highlighter-rouge">tun0</code>.</p>
+
+<p>The next thing will be to configure the ip address, the mtu, spin up tun interface like we did with the ip commands. To do this, there is a basic structure, we make a sys call targeting the tun interface in the netowrk stack using a UDP socket;</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// set up the UDP socket</span>
+<span class="k">let</span> <span class="n">socket_tun</span> <span class="o">=</span> <span class="k">match</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="nf">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_DGRAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="p">}</span> <span class="p">{</span>
+            <span class="o">-</span><span class="mi">1</span> <span class="k">=&gt;</span> <span class="k">return</span> <span class="nf">Err</span><span class="p">(</span><span class="nn">Error</span><span class="p">::</span><span class="nf">Socket</span><span class="p">(</span><span class="nn">io</span><span class="p">::</span><span class="nn">Error</span><span class="p">::</span><span class="nf">last_os_error</span><span class="p">())),</span>
+            <span class="n">fd</span> <span class="k">=&gt;</span> <span class="n">fd</span><span class="p">,</span>
+        <span class="p">};</span>
+
+<span class="c1">// initialize ifreq struct</span>
+<span class="k">let</span> <span class="k">mut</span> <span class="n">ifr</span><span class="p">:</span> <span class="n">ifreq</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="nn">mem</span><span class="p">::</span><span class="nf">zeroed</span><span class="p">()</span> <span class="p">};</span>
+<span class="k">unsafe</span> <span class="p">{</span>
+    <span class="nn">ptr</span><span class="p">::</span><span class="nf">copy_nonoverlapping</span><span class="p">(</span>
+        <span class="k">self</span><span class="py">.name</span><span class="nf">.as_bytes</span><span class="p">()</span><span class="nf">.as_ptr</span><span class="p">(),</span> <span class="c1">// name of the interface tun0</span>
+        <span class="n">ifr</span><span class="py">.ifr_name</span><span class="nf">.as_mut_ptr</span><span class="p">()</span> <span class="k">as</span> <span class="o">*</span><span class="k">mut</span> <span class="nb">u8</span><span class="p">,</span>
+        <span class="k">self</span><span class="py">.name</span><span class="nf">.len</span><span class="p">(),</span>
+    <span class="p">);</span>
+
+    <span class="c1">// configure the ifru_flags to IFF_UP;</span>
+    <span class="n">ifr</span><span class="py">.ifr_ifru.ifru_flags</span> <span class="p">|</span><span class="o">=</span> <span class="p">(</span><span class="n">IFF_UP</span> <span class="p">|</span> <span class="n">IFF_RUNNING</span><span class="p">)</span> <span class="k">as</span> <span class="nb">c_short</span><span class="p">;</span>
+
+    <span class="c1">// syscall with instrcution code SIOCSIFFLAGS to configure</span>
+    <span class="c1">// tun interface flag</span>
+    <span class="nf">ioctl</span><span class="p">(</span><span class="k">self</span><span class="py">.socket_tun</span><span class="p">,</span> <span class="n">SIOCSIFFLAGS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ifr</span><span class="p">)</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>This basic structure is applicable to every other configuration. <a href="https://man7.org/linux/man-pages/man7/netdevice.7.html">netdevice(7)</a> contains all other instruction code to configure respective part of the tun interface.</p>
+
+<p>Before we close this chapter of tun interface, what happens if the tun interface goes down, or somehow the interface was deleted, the whole program collapse abruptly, we might want to handle the canceling of the program gracefully. Studying <a href="https://github.com/WireGuard/wireguard-go">wireguard-go</a> i came in contact with two different approach.</p>
+
+<ol>
+  <li><strong>First approach</strong>: Remember we associated a file with the tun interface, what they did was try to write to this file and base on the response from this file you can know if its still up and down. this function was added to a goroutine so the system can always be aware anytime its down <a href="https://github.com/WireGuard/wireguard-go/blob/12269c2761734b15625017d8565745096325392f/tun/tun_linux.go#L62">[*]</a></li>
+  <li><strong>Second Approach</strong>: They make use of <a href="https://man7.org/linux/man-pages/man7/netlink.7.html">NetLink</a> this enable communication between the kernel and userspace, it still make use of socket but no ioctl for syscall. I read it is good for when the kernel is sending information to the userpace. Hence wireguard use this to recieve tun interface state from the kernel <a href="https://github.com/WireGuard/wireguard-go/blob/12269c2761734b15625017d8565745096325392f/tun/tun_linux.go#L110C1-L127C16">[*]</a></li>
+</ol>
+
+<h2 id="tunneling-vpn-like-structure">Tunneling (VPN like) structure</h2>
+
+<p><img src="/assets/images/network-tunnel/vpn.png" /></p>
+
+<p>The image above shows the whole flow from pinging a domain like twitter to sending it over to our server and then to the internet.</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">loop</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">read_fds</span> <span class="o">=</span> <span class="nn">FdSet</span><span class="p">::</span><span class="nf">new</span><span class="p">();</span>
+    <span class="n">read_fds</span><span class="nf">.insert</span><span class="p">(</span><span class="n">tun_fd</span><span class="p">);</span>
+    <span class="n">read_fds</span><span class="nf">.insert</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">);</span>
+
+    <span class="k">match</span> <span class="nf">select</span><span class="p">(</span><span class="nb">None</span><span class="p">,</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">read_fds</span><span class="p">,</span> <span class="nb">None</span><span class="p">,</span> <span class="nb">None</span><span class="p">,</span> <span class="nb">None</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nf">Ok</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="n">read_fds</span><span class="nf">.contains</span><span class="p">(</span><span class="n">tun_fd</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">match</span> <span class="n">tun</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">buf</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="nf">Ok</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                        <span class="k">if</span> <span class="n">amount</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+                        <span class="c1">//packet can be process or encrypeted here before</span>
+                        <span class="c1">// sending it out to the server or client</span>
+                            <span class="n">socket</span><span class="nf">.send_to</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="mi">0</span><span class="o">..</span><span class="n">amount</span><span class="p">],</span> <span class="n">peer_ip</span><span class="p">);</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+                    <span class="nf">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                        <span class="nd">eprintln!</span><span class="p">(</span><span class="s">"Error reading from TUN: {}"</span><span class="p">,</span> <span class="n">e</span><span class="p">);</span>
+                        <span class="k">break</span><span class="p">;</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+            <span class="k">if</span> <span class="n">read_fds</span><span class="nf">.contains</span><span class="p">(</span><span class="n">socket_fd</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">match</span> <span class="n">socket</span><span class="nf">.recv_from</span><span class="p">()</span> <span class="p">{</span>
+                    <span class="nf">Ok</span><span class="p">((</span><span class="n">recv_amount</span><span class="p">,</span> <span class="n">recv_buf</span><span class="p">))</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                        <span class="c1">//if incoming packet is encrypted it will be okay to</span>
+                        <span class="c1">//deccrypt it here and send to tun device</span>
+                        <span class="k">let</span> <span class="n">amount</span> <span class="o">=</span> <span class="n">tun</span><span class="nf">.write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">recv_buf</span><span class="p">[</span><span class="mi">0</span><span class="o">..</span><span class="n">recv_amount</span><span class="p">]);</span>
+                        <span class="nd">println!</span><span class="p">(</span><span class="s">"Wrote {} bytes to tun"</span><span class="p">,</span> <span class="n">amount</span><span class="p">);</span>
+
+                    <span class="p">}</span>
+                    <span class="nf">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                        <span class="nd">eprintln!</span><span class="p">(</span><span class="s">"Error reading from socket: {}"</span><span class="p">,</span> <span class="n">e</span><span class="p">);</span>
+                        <span class="k">break</span><span class="p">;</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="nf">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="p">{</span>
+            <span class="nd">eprintln!</span><span class="p">(</span><span class="s">"select error: {}"</span><span class="p">,</span> <span class="n">e</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Recall that we have a file desriptor attached to the tun interface, we also need to create a socket that listen to incoming packet. the tun device and socket descriptor are both manage by <a href="https://man7.org/linux/man-pages/man2/select.2.html">select</a> to monitor any time there is an event in either of the two file descriptor.</p>
+
+<p>The image below shows the basic flow of the packet from client to server</p>
+
+<p><img src="/assets/images/network-tunnel/vpnflow.png" /></p>
+
+<p>The Udp data sent from the client is wrapped in a circle to show that the client can decide to encrypt the data and the server on recieving the data use the neccessary key to decrypt the data and then send over to the internet. For example wireguard make use of Diffie-Hellman to agreed on the keys used to decrypt and encrypt the packet being sent and recieved.</p>
+
+<h2 id="localhost-tunneling">Localhost Tunneling</h2>
+
+<p><img src="/assets/images/network-tunnel/localhost.png" /></p>
+
+<p>In simple term, it is a technique of exposing your local server or service to the internet or another network. for example we can make the service rendered via <code class="language-plaintext highlighter-rouge">localhost:3200</code> in a client network to be accessible in another network via <code class="language-plaintext highlighter-rouge">localhost:3000</code>.</p>
+
+<p>The image below shows a basic flow of how that works</p>
+
+<p><img src="/assets/images/network-tunnel/localhost2.png" />
+The whole idea is that you can start a service on client side</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ python3 -m http.server 3200
+</code></pre></div></div>
+
+<p>then, the client has to be aware of the server ip, server port so it get connected to it via e.g <code class="language-plaintext highlighter-rouge">192.168.0.103:8080</code></p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="k">mut</span> <span class="n">server_stream</span> <span class="o">=</span> <span class="nn">TcpStream</span><span class="p">::</span><span class="nf">connect</span><span class="p">(</span><span class="s">"192.168.0.103:8080"</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="k">let</span> <span class="k">mut</span> <span class="n">local_stream</span> <span class="o">=</span> <span class="nn">TcpStream</span><span class="p">::</span><span class="nf">connect</span><span class="p">(</span><span class="s">"127.0.0.1:3200"</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+
+
+<span class="k">loop</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="n">event</span> <span class="k">in</span> <span class="n">events</span><span class="nf">.iter</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">match</span> <span class="n">event</span><span class="nf">.token</span><span class="p">()</span> <span class="p">{</span>
+            <span class="n">SERVER</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                <span class="c1">//check if the server_stream is readable</span>
+                <span class="k">if</span> <span class="n">event</span><span class="nf">.is_readable</span><span class="p">()</span> <span class="p">{</span>
+                    <span class="k">let</span> <span class="k">mut</span> <span class="n">buf</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">;</span><span class="mi">4096</span><span class="p">];</span>
+                    <span class="c1">// get the stream coming from the server</span>
+                    <span class="k">let</span> <span class="n">n</span>  <span class="o">=</span> <span class="n">server_stream</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">);</span>
+                    <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+                        <span class="nf">local_stream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]);</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+            <span class="n">LOCAL</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                <span class="c1">// check if the local_stream event is readable</span>
+                <span class="k">if</span> <span class="n">event</span><span class="nf">.is_readable</span><span class="p">()</span> <span class="p">{</span>
+                    <span class="k">let</span> <span class="k">mut</span> <span class="n">buf</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">;</span><span class="mi">4096</span><span class="p">];</span>
+                    <span class="c1">// read into a buf</span>
+                    <span class="k">let</span> <span class="n">n</span> <span class="o">=</span> <span class="n">local_stream</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">);</span>
+                    <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+                        <span class="c1">// write to the server</span>
+                        <span class="n">server_stream</span><span class="nf">.write</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]);</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p><a href="https://man7.org/linux/man-pages/man7/epoll.7.html">Epoll</a> is used via <a href="https://github.com/tokio-rs/mio">Tokio mio</a> to manage whenever there is an event from either of the server and local tcpstream.</p>
+
+<p>For the server side, we have to manage the server , the server localhost and the connected client connection</p>
+
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="k">mut</span> <span class="n">server</span> <span class="o">=</span> <span class="nn">TcpListener</span><span class="p">::</span><span class="nf">bind</span><span class="p">(</span><span class="s">"0.0.0.0:8080"</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+
+<span class="c1">// store connection between local tcpstream and client tcp stream</span>
+<span class="k">let</span> <span class="k">mut</span> <span class="n">client_localstream</span><span class="p">:</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">Token</span><span class="p">,</span> <span class="p">(</span><span class="n">TcpStream</span><span class="p">,</span> <span class="n">TcpStream</span><span class="p">)</span><span class="o">&gt;</span> <span class="o">=</span> <span class="nn">HashMap</span><span class="p">::</span><span class="nf">new</span><span class="p">();</span>
+
+<span class="c1">// store connection between local listerner and the incomin client stream</span>
+<span class="k">let</span> <span class="k">mut</span> <span class="n">locallistener_clientstream</span><span class="p">:</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">Token</span><span class="p">,</span> <span class="p">(</span><span class="n">TcpListener</span><span class="p">,</span> <span class="n">TcpStream</span><span class="p">)</span><span class="o">&gt;</span> <span class="o">=</span> <span class="nn">HashMap</span><span class="p">::</span><span class="nf">new</span><span class="p">();</span>
+
+<span class="k">loop</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="n">event</span> <span class="k">in</span> <span class="n">events</span><span class="nf">.iter</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">match</span> <span class="n">event</span><span class="nf">.token</span><span class="p">()</span> <span class="p">{</span>
+            <span class="n">SERVER</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                <span class="c1">// ACCEPT connection</span>
+                <span class="k">let</span> <span class="p">(</span><span class="k">mut</span> <span class="n">client_stream</span><span class="p">,</span> <span class="n">address</span><span class="p">)</span> <span class="o">=</span> <span class="n">server</span><span class="nf">.accept</span><span class="p">();</span>
+
+                <span class="c1">// for every accepeted connection create a</span>
+                <span class="c1">// a new local host at a random port</span>
+                <span class="k">let</span> <span class="n">local_listener</span> <span class="o">=</span> <span class="nn">TcpListerner</span><span class="p">::</span><span class="nf">bind</span><span class="p">(</span><span class="s">"127.0.0.1:3000"</span><span class="p">);</span>
+
+                <span class="c1">// register the local_listener</span>
+                <span class="n">poll</span><span class="nf">.registry</span><span class="p">()</span><span class="nf">.register</span><span class="p">(</span>
+                    <span class="o">&amp;</span><span class="k">mut</span> <span class="n">local_listener</span><span class="p">,</span>
+                    <span class="n">LOCALCON</span><span class="p">,</span>
+                    <span class="nn">Interest</span><span class="p">::</span><span class="n">READABLE</span><span class="p">,</span>
+                <span class="p">)</span><span class="o">?</span><span class="p">;</span>
+                <span class="c1">// store in hasmap</span>
+                <span class="n">locallistener_clientstream</span><span class="nf">.insert</span><span class="p">(</span><span class="n">LOCALCON</span><span class="p">,</span> <span class="p">(</span><span class="n">local_listener</span><span class="p">,</span> <span class="n">client_stream</span><span class="p">));</span>
+            <span class="p">}</span>
+            <span class="n">LOCALCON</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                <span class="c1">// manage locallistener connection</span>
+
+                <span class="c1">// fetch the local_lsiterner and the client stream</span>
+                <span class="k">if</span> <span class="k">let</span> <span class="nf">Some</span><span class="p">((</span><span class="n">local_listener</span><span class="p">,</span> <span class="k">mut</span> <span class="n">client_stream</span><span class="p">))</span> <span class="o">=</span>
+                        <span class="n">locallistener_clientstream</span><span class="nf">.remove</span><span class="p">(</span><span class="o">&amp;</span><span class="n">LOCALCON</span><span class="p">)</span>
+                    <span class="p">{</span>
+                        <span class="k">let</span><span class="p">(</span><span class="k">mut</span> <span class="n">local_stream</span><span class="p">,</span> <span class="n">address</span><span class="p">)</span> <span class="o">=</span> <span class="n">local_listener</span><span class="nf">.accept</span><span class="p">();</span>
+
+                        <span class="c1">//register the local stream in an event</span>
+                        <span class="n">poll</span><span class="nf">.registry</span><span class="p">()</span><span class="nf">.register</span><span class="p">(</span>
+                            <span class="o">&amp;</span><span class="k">mut</span> <span class="n">client_stream</span><span class="p">,</span>
+                            <span class="n">CLIENT</span><span class="p">,</span>
+                            <span class="nn">Interest</span><span class="p">::</span><span class="n">READABLE</span> <span class="p">|</span> <span class="nn">Interest</span><span class="p">::</span><span class="n">WRITABLE</span><span class="p">,</span>
+                        <span class="p">)</span><span class="o">?</span><span class="p">;</span>
+                        <span class="n">poll</span><span class="nf">.registry</span><span class="p">()</span><span class="nf">.register</span><span class="p">(</span>
+                            <span class="o">&amp;</span><span class="k">mut</span> <span class="n">local_stream</span><span class="p">,</span>
+                            <span class="n">LOCAL</span><span class="p">,</span>
+                            <span class="nn">Interest</span><span class="p">::</span><span class="n">READABLE</span> <span class="p">|</span> <span class="nn">Interest</span><span class="p">::</span><span class="n">WRITABLE</span><span class="p">,</span>
+                        <span class="p">)</span><span class="o">?</span><span class="p">;</span>
+
+                        <span class="n">client_localstream</span><span class="nf">.insert</span><span class="p">(</span><span class="n">CLIENT</span><span class="p">,</span> <span class="p">(</span><span class="n">local_stream</span><span class="p">,</span> <span class="n">client_stream</span><span class="p">));</span>
+
+                <span class="p">}</span>
+
+            <span class="p">}</span>
+            <span class="n">LOCAL</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="n">event</span><span class="nf">.is_readable</span><span class="p">()</span> <span class="p">{</span>
+                     <span class="k">if</span> <span class="k">let</span> <span class="nf">Some</span><span class="p">((</span><span class="n">local_stream</span><span class="p">,</span> <span class="n">client_stream</span><span class="p">))</span> <span class="o">=</span> <span class="n">client_localstream</span><span class="nf">.get_mut</span><span class="p">(</span><span class="o">&amp;</span><span class="n">CLIENT</span><span class="p">)</span> <span class="p">{</span>
+                         <span class="k">let</span> <span class="k">mut</span> <span class="n">buf</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">;</span> <span class="mi">4096</span><span class="p">];</span>
+                         <span class="c1">// fetch incoming packet from the browser</span>
+                         <span class="k">let</span> <span class="n">n</span> <span class="o">=</span> <span class="n">local_stream</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]);</span>
+                         <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+                             <span class="c1">// send the packet to the connected client localhost</span>
+                             <span class="n">client_stream</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]);</span>
+                         <span class="p">}</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+            <span class="n">CLIENT</span> <span class="k">=&gt;</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="n">event</span><span class="nf">.is_readable</span><span class="p">()</span> <span class="p">{</span>
+                    <span class="k">if</span> <span class="k">let</span> <span class="nf">Some</span><span class="p">((</span><span class="n">local_stream</span><span class="p">,</span> <span class="n">client_stream</span><span class="p">))</span> <span class="o">=</span> <span class="n">client_localstream</span><span class="nf">.get_mut</span><span class="p">(</span><span class="o">&amp;</span><span class="n">CLIENT</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="k">let</span> <span class="k">mut</span> <span class="n">buf</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">;</span> <span class="mi">4096</span><span class="p">];</span>
+                        <span class="c1">// collect incoming packet from client localhost</span>
+                        <span class="k">let</span> <span class="n">n</span> <span class="o">=</span> <span class="n">client_stream</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">...</span><span class="n">n</span><span class="p">]);</span>
+                        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+                            <span class="c1">// send it to the server local browser</span>
+                            <span class="n">local_stream</span><span class="nf">.read</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]);</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The code above shows the basic structure of how Tcpstream from the client is piped into the Server localhost Tcpstream. that means what is available in client <code class="language-plaintext highlighter-rouge">localhost:3200</code> is accesbile on the server and if you visit <code class="language-plaintext highlighter-rouge">localhost:3000</code> in the server browser you should see client data.</p>
+
+<p>This example does not contain error handling and reconnection. Check <a href="https://github.com/systemEng-Learning/simple-wireguard/blob/main/tunnel-indocker/localhost-tunnel/src/main.rs">here</a> for the full code. Also reading this code should give you insight into how <a href="https://github.com/ekzhang/bore">bore</a> works. the only difference is that bore manage authenctication, persistent connection and make use of asynchronous rust.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The article shows the basic structure of a vpn and localhost network tunnel. it started from the idea of network interface to the basic code structure of how to implement them. There are some few other things we didn’t talk about, for example for both the tunneling and localhost tunneling we added the client ip manually to the server, but the normal way to have done that, is to make the server aware of the client ip via an handshake. Also we didn’t talk about the encryption of the network payload, managing multiple client and also client reconnection. this are more interesting topic if you want to go furthur in implementation and some of the references below and even the project contains such implementation.</p>
+
+<h2 id="code">Code</h2>
+
+<p><strong>Tunneling</strong> : <a href="https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/vpn">https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/vpn</a></p>
+
+<p><strong>Localhost tunneling</strong>: <a href="https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/localhost-tunnel">https://github.com/systemEng-Learning/simple-wireguard/tree/main/tunnel-indocker/localhost-tunnel</a></p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li>Rustun <a href="https://github.com/meh/rust-tun">https://github.com/meh/rust-tun</a></li>
+  <li>bore <a href="https://github.com/ekzhang/bore">https://github.com/ekzhang/bore</a></li>
+  <li>wireguard-go <a href="https://github.com/ekzhang/bore">https://github.com/WireGuard/wireguard-go</a></li>
+  <li>boringtun <a href="https://github.com/cloudflare/boringtun">https://github.com/cloudflare/boringtun</a></li>
+  <li>VPN Tun/Tap and sockets, routing, tunnels and TLS <a href="https://www.youtube.com/watch?v=XKV0fSxrCmg&amp;t=2314s">https://www.youtube.com/watch?v=XKV0fSxrCmg&amp;t=2314s</a></li>
+</ul>
+
+  </div>
+
+  <footer class="post-footer">
+    <a href="/blog">← all writing</a>
+    
+    <a href="/blog">network</a>
+    
+  </footer>
+</article>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 Stephen Oni</p>
+    <div class="footer-links">
+      <a href="https://github.com/steveoni" target="_blank" rel="noopener">github</a>
+      <a href="https://twitter.com/steveoni" target="_blank" rel="noopener">twitter</a>
+      <a href="https://linkedin.com/in/stephen-oni" target="_blank" rel="noopener">linkedin</a>
+      <a href="mailto:stephenoni2@gmail.com">email</a>
+    </div>
+  </footer>
+
+</body>
+</html>

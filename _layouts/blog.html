@@ -1,0 +1,136 @@
+---
+layout: default
+---
+<style>
+  /* ── blog page header ─────────────────────────────────── */
+  .blog-header {
+    margin-bottom: 3rem;
+  }
+  .blog-header h1 {
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.5rem;
+  }
+  .blog-header p {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  /* ── post list ────────────────────────────────────────── */
+  .post-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .post-list-item {
+    padding: 1.35rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-list-item:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .post-list-item .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .post-list-item .post-date {
+    font-size: 0.78rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .post-list-item .post-category {
+    font-size: 0.68rem;
+    font-family: "DM Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+  .post-list-item h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+    margin: 0 0 0.4rem;
+    line-height: 1.35;
+  }
+  .post-list-item h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .post-list-item h2 a:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .post-list-item .post-excerpt {
+    font-size: 0.875rem;
+    color: var(--muted);
+    line-height: 1.65;
+    margin: 0;
+    /* clamp to 3 lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .post-list-item .read-more {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    transition: color 0.15s;
+  }
+  .post-list-item .read-more:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* ── empty state ──────────────────────────────────────── */
+  .no-posts {
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 2rem 0;
+  }
+</style>
+
+<div class="blog-header">
+  <h1>Writing</h1>
+  <p>Notes and essays on systems programming, infrastructure, and things I find interesting.</p>
+  <p>You can find all my Machine/Deep learning writings <a href="https://medium.com/@steveoni" target="_blank">here</a>.</p>
+</div>
+
+<p class="section-label">All Posts</p>
+
+{% if site.posts.size == 0 %}
+  <p class="no-posts">Nothing published yet — check back soon.</p>
+{% else %}
+  <ul class="post-list">
+    {% for post in site.posts %}
+    <li class="post-list-item">
+      <div class="post-meta">
+        <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
+        {% for cat in post.categories %}
+        <span class="post-category">{{ cat }}</span>
+        {% endfor %}
+      </div>
+      <h2><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h2>
+      {% if post.excerpt %}
+      <p class="post-excerpt">{{ post.excerpt | strip_html | truncatewords: 40 }}</p>
+      {% endif %}
+      <a class="read-more" href="{{ post.url | relative_url }}">read more →</a>
+    </li>
+    {% endfor %}
+  </ul>
+{% endif %}

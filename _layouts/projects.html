@@ -1,0 +1,224 @@
+---
+layout: default
+---
+<style>
+  /* ── page intro ────────────────────────────────────────── */
+  .projects-intro { margin-bottom: 3rem; }
+  .projects-intro h1 { margin-bottom: 1rem; }
+  .projects-intro p {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.8;
+    max-width: 580px;
+  }
+  .projects-intro p a { color: var(--accent); }
+
+  /* ── category heading ──────────────────────────────────── */
+  .cat-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    margin: 3rem 0 2rem;
+  }
+
+  /* ── project row ───────────────────────────────────────── */
+  .proj-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    align-items: center;
+    margin-bottom: 3.5rem;
+    padding-bottom: 3.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .proj-row:last-child { border-bottom: none; }
+
+  /* alternate: even rows flip image to left */
+  .proj-row.flip { direction: rtl; }
+  .proj-row.flip > * { direction: ltr; }
+
+  @media (max-width: 600px) {
+    .proj-row,
+    .proj-row.flip { grid-template-columns: 1fr; direction: ltr; }
+    .proj-row .proj-img { order: -1; }
+  }
+
+  /* ── text side ─────────────────────────────────────────── */
+  .proj-body { display: flex; flex-direction: column; }
+  .proj-title {
+    font-size: 1.05rem;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+    color: var(--text);
+  }
+  .proj-title a { color: inherit; }
+  .proj-title a:hover { color: var(--accent); text-decoration: none; }
+
+  .proj-meta {
+    font-size: 0.75rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .proj-meta .pm-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .proj-meta .pm-stars svg { opacity: 0.5; }
+  .proj-contrib {
+    font-size: 0.68rem;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.85;
+    letter-spacing: 0.03em;
+  }
+
+  .proj-desc {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 0.85rem;
+  }
+  .proj-desc a { color: var(--accent); }
+
+  .proj-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.9rem;
+  }
+  .proj-tag {
+    font-size: 0.7rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+  }
+
+  .proj-links { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .proj-links a {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .proj-links a:hover { color: var(--text); text-decoration: none; }
+  .proj-links a::before { content: "↗ "; opacity: 0.5; }
+
+  /* ── image side ────────────────────────────────────────── */
+  .proj-img {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .proj-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 0;
+    margin: 0;
+    display: block;
+  }
+  /* fallback placeholder when no image */
+  .proj-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--subtle);
+    font-family: "DM Mono", monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .proj-img-placeholder svg { opacity: 0.3; }
+</style>
+
+<div class="projects-intro">
+  <h1>Projects</h1>
+  {{ content }}
+</div>
+
+{% assign flip = false %}
+{% for group in page.groups %}
+<p class="cat-label">{{ group.name }}</p>
+
+{% for project in group.projects %}
+  {% assign mod = forloop.index | modulo: 2 %}
+  {% if mod == 0 %}
+    {% assign flip_class = "flip" %}
+  {% else %}
+    {% assign flip_class = "" %}
+  {% endif %}
+
+<div class="proj-row {{ flip_class }}">
+  <div class="proj-body">
+    <div class="proj-title">
+      <a href="{{ project.url }}" {% if project.url contains "http" %}target="_blank" rel="noopener"{% endif %}>{{ project.name }}</a>
+    </div>
+    <div class="proj-meta">
+      {% if project.stars %}
+      <span class="pm-stars">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+        </svg>
+        {{ project.stars }}
+      </span>
+      {% endif %}
+      {% if project.contrib %}
+      <span class="proj-contrib">contributed</span>
+      {% endif %}
+    </div>
+    <div class="proj-desc">{{ project.description | newline_to_br }}</div>
+    {% if project.tags %}
+    <div class="proj-tags">
+      {% for tag in project.tags %}
+      <span class="proj-tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if project.links %}
+    <div class="proj-links">
+      {% for link in project.links %}
+      <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.label }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="proj-img">
+    {% if project.image %}
+    <img src="{{ project.image }}" alt="{{ project.name }} screenshot" loading="lazy" />
+    {% else %}
+    <div class="proj-img-placeholder">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+      </svg>
+      {{ project.name }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endfor %}
+{% endfor %}

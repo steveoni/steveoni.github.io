@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notes on Building a Minimal VM-Based Job Runner with Firecracker · Stephen Oni</title>
+  <meta name="description" content="A novice's dance amidst binary symphony" />
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Notes on Building a Minimal VM-Based Job Runner with Firecracker | Stephen Oni</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Notes on Building a Minimal VM-Based Job Runner with Firecracker" />
+<meta name="author" content="Stephen Oni" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="The beauty of working on a small project like this is how effective it is at refreshing your knowledge, helping you understand what it takes to build a reliable product, and giving you intuition or a high-level overview of new concepts." />
+<meta property="og:description" content="The beauty of working on a small project like this is how effective it is at refreshing your knowledge, helping you understand what it takes to build a reliable product, and giving you intuition or a high-level overview of new concepts." />
+<link rel="canonical" href="http://localhost:4000/microvm/notes-on-simple-vm-bases-job-runner/" />
+<meta property="og:url" content="http://localhost:4000/microvm/notes-on-simple-vm-bases-job-runner/" />
+<meta property="og:site_name" content="Stephen Oni" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-07-07T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Notes on Building a Minimal VM-Based Job Runner with Firecracker" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Stephen Oni"},"dateModified":"2025-07-07T00:00:00+01:00","datePublished":"2025-07-07T00:00:00+01:00","description":"The beauty of working on a small project like this is how effective it is at refreshing your knowledge, helping you understand what it takes to build a reliable product, and giving you intuition or a high-level overview of new concepts.","headline":"Notes on Building a Minimal VM-Based Job Runner with Firecracker","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/microvm/notes-on-simple-vm-bases-job-runner/"},"url":"http://localhost:4000/microvm/notes-on-simple-vm-bases-job-runner/"}</script>
+<!-- End Jekyll SEO tag -->
+
+  <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── tokens ───────────────────────────────────────────── */
+    :root {
+      --bg:        #0e0e10;
+      --surface:   #141416;
+      --border:    #222226;
+      --text:      #e8e8e4;
+      --muted:     #888884;
+      --subtle:    #444440;
+      --accent:    #a8c5a0;   /* sage green — calm, natural */
+      --link:      #a8c5a0;
+      --link-hover:#c8e5c0;
+      --code-bg:   #131315;
+      --max-w:     680px;
+    }
+
+    /* ── reset ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── nav ──────────────────────────────────────────────── */
+    .site-nav {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .site-nav .brand {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+    .site-nav .brand a { color: inherit; }
+    .site-nav .brand a:hover { text-decoration: none; color: var(--accent); }
+    .site-nav .links { display: flex; gap: 1.75rem; }
+    .site-nav .links a {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .site-nav .links a:hover { color: var(--text); text-decoration: none; }
+    .site-nav .links a.active { color: var(--text); }
+
+    /* ── main content ─────────────────────────────────────── */
+    main {
+      max-width: var(--max-w);
+      margin: 3.5rem auto 5rem;
+      padding: 0 1.5rem;
+    }
+
+    /* ── footer ───────────────────────────────────────────── */
+    .site-footer {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .site-footer p { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links { display: flex; gap: 1.25rem; }
+    .site-footer .footer-links a { font-size: 0.82rem; color: var(--muted); }
+    .site-footer .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── typography ───────────────────────────────────────── */
+    h1 { font-size: 1.6rem; font-weight: 500; line-height: 1.25; margin-bottom: 1rem; letter-spacing: -0.01em; }
+    h2 { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+         color: var(--muted); margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1rem; font-weight: 500; margin: 1.25rem 0 0.4rem; }
+    h4 { font-size: 0.9rem; font-weight: 500; color: var(--muted); margin: 1rem 0 0.3rem; }
+    p  { margin: 0.75rem 0; color: var(--text); }
+    ul, ol { margin: 0.75rem 0 0.75rem 1.4rem; }
+    li { margin-bottom: 0.3rem; }
+
+    blockquote {
+      border-left: 2px solid var(--subtle);
+      padding: 0.3rem 1rem;
+      color: var(--muted);
+      margin: 1.25rem 0;
+      font-style: italic;
+    }
+
+    code {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    pre {
+      font-family: "DM Mono", "SFMono-Regular", Consolas, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+    /* ── syntax highlighting (Rouge — custom dark) ────────── */
+    .highlight          { background: var(--code-bg); border-radius: 8px; border: 1px solid var(--border); margin: 1.25rem 0; overflow-x: auto; }
+    .highlight pre      { background: none; border: none; border-radius: 0; margin: 0; padding: 1.1rem 1.25rem; }
+
+    /* language label pill */
+    .highlight[data-lang]::before {
+      content: attr(data-lang);
+      display: block;
+      font-size: 0.68rem;
+      font-family: "DM Mono", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--subtle);
+      padding: 0.5rem 1.25rem 0;
+    }
+
+    /* token colours — readable on dark bg, WCAG AA compliant */
+    .highlight .c,  .highlight .cm, .highlight .c1, .highlight .cs  { color: #6a8060; font-style: italic; }  /* comments — muted sage */
+    .highlight .k,  .highlight .kd, .highlight .kn, .highlight .kp,
+    .highlight .kr, .highlight .kt                                   { color: #c792ea; }  /* keywords — soft violet */
+    .highlight .n,  .highlight .nb, .highlight .ni, .highlight .nl,
+    .highlight .nn, .highlight .nx                                   { color: #c3c3be; }  /* names — near-white */
+    .highlight .na                                                   { color: #82aaff; }  /* attr names — sky blue */
+    .highlight .nf, .highlight .fm, .highlight .py                  { color: #82aaff; }  /* function names — sky blue */
+    .highlight .nc, .highlight .nd, .highlight .ne                  { color: #ffcb6b; }  /* class/decorator — amber */
+    .highlight .s,  .highlight .s1,.highlight .s2, .highlight .sb,
+    .highlight .sc, .highlight .sd, .highlight .sh, .highlight .si,
+    .highlight .sx, .highlight .sr, .highlight .ss                  { color: #c3e88d; }  /* strings — soft lime */
+    .highlight .m,  .highlight .mf, .highlight .mh, .highlight .mi,
+    .highlight .mo, .highlight .il                                   { color: #f78c6c; }  /* numbers — warm orange */
+    .highlight .o,  .highlight .ow                                   { color: #89ddff; }  /* operators — ice blue */
+    .highlight .p,  .highlight .pi                                   { color: #89ddff; }  /* punctuation */
+    .highlight .err                                                   { color: #ff5572; background: none; }  /* errors */
+    .highlight .ge  { font-style: italic; }
+    .highlight .gs  { font-weight: bold; }
+    .highlight .cp                                                    { color: #ffcb6b; }  /* preprocessor — amber */
+    .highlight .gh, .highlight .gu                                   { color: var(--muted); font-weight: bold; }  /* diff headings */
+    .highlight .gd                                                    { color: #ff5572; background: rgba(255,85,114,0.08); display: block; }  /* diff deleted */
+    .highlight .gi                                                    { color: #c3e88d; background: rgba(195,232,141,0.08); display: block; }  /* diff inserted */
+
+    /* line numbers if enabled */
+    .highlight .gl { color: var(--subtle); padding-right: 1.2rem; user-select: none; }
+
+    img { max-width: 100%; border-radius: 8px; margin: 1.25rem 0; display: block; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--surface); color: var(--muted); font-weight: 500; }
+
+    /* ── divider label ────────────────────────────────────── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 3rem 0 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+  </style>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W9SDX6RR77"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-W9SDX6RR77');
+</script>
+
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="brand"><a href="/">Stephen Oni</a></div>
+    <div class="links">
+      <a href="/" >home</a>
+      <a href="/blog" class="active">writing</a>
+      <a href="/project" >projects</a>
+    </div>
+  </nav>
+
+  <main>
+    <style>
+  /* ── post layout ──────────────────────────────────────── */
+  .post-header {
+    margin-bottom: 2.75rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-header h1 {
+    font-size: 1.55rem;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    margin-bottom: 0.75rem;
+    color: var(--text); /* explicit — ensures full contrast */
+  }
+  .post-header .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .post-header .post-date {
+    font-size: 0.8rem;
+    font-family: "DM Mono", monospace;
+    color: var(--muted);
+  }
+  .post-header .post-category {
+    font-size: 0.68rem;
+    font-family: "DM Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+
+  /* ── post body typography ─────────────────────────────── */
+  .post-content {
+    /* slightly warmer text for long-form reading */
+    --text: #ebebе7;
+  }
+  .post-content > * + * { margin-top: 0; }
+
+  .post-content p {
+    font-size: 1rem;
+    line-height: 1.85;
+    color: var(--text);
+    margin: 1rem 0;
+  }
+
+  /* headings inside post — stronger hierarchy */
+  .post-content h2 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 3rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-content h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text);
+    margin: 2rem 0 0.5rem;
+  }
+  .post-content h4 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin: 1.5rem 0 0.4rem;
+  }
+
+  /* lists */
+  .post-content ul,
+  .post-content ol {
+    margin: 1rem 0 1rem 1.5rem;
+    color: var(--text);
+  }
+  .post-content li { margin-bottom: 0.35rem; line-height: 1.8; }
+
+  /* blockquote — improved contrast */
+  .post-content blockquote {
+    border-left: 2px solid var(--accent);
+    padding: 0.5rem 1.1rem;
+    background: rgba(168, 197, 160, 0.06);
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0;
+  }
+  .post-content blockquote p {
+    color: #b4b4b0;   /* AA on dark bg */
+    font-style: italic;
+    margin: 0;
+  }
+
+  /* inline code — ensure contrast */
+  .post-content code {
+    color: #c3e88d;   /* soft lime — legible on #131315 */
+  }
+
+  /* ── images — accessible & constrained ───────────────── */
+  .post-content img {
+    max-width: 100%;
+    height: auto;
+    max-height: 520px;
+    object-fit: contain;
+    display: block;
+    margin: 2rem auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface); /* letterbox bg when image has alpha */
+  }
+
+  /* figure + figcaption for authored images */
+  .post-content figure {
+    margin: 2rem 0;
+  }
+  .post-content figure img {
+    margin: 0 auto 0.6rem;
+  }
+  .post-content figcaption {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    font-style: italic;
+    font-family: "DM Mono", monospace;
+  }
+
+  /* ── post footer nav ──────────────────────────────────── */
+  .post-footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .post-footer a {
+    font-size: 0.83rem;
+    color: var(--muted);
+    font-family: "DM Mono", monospace;
+    transition: color 0.15s;
+  }
+  .post-footer a:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+</style>
+
+<article aria-labelledby="post-title">
+  <header class="post-header">
+    <h1 id="post-title">Notes on Building a Minimal VM-Based Job Runner with Firecracker</h1>
+    <div class="post-meta">
+      <time class="post-date" datetime="2025-07-07">
+        July 7, 2025
+      </time>
+      
+      <span class="post-category">microvm</span>
+      
+    </div>
+  </header>
+
+  <div class="post-content">
+    <p>The beauty of working on a small project like this is how effective it is at refreshing your knowledge, helping you understand what it takes to build a reliable product, and giving you intuition or a high-level overview of new concepts.</p>
+
+<p>Through this project, I’ve gained insight into how some similar commercial products works, and I’ve come to truly appreciate the effort it takes to build and ship them.</p>
+
+<p>This note contains what I’ve learned about networking (including some refreshers), the Linux filesystem, the basics of Firecracker, and more.</p>
+
+<p><img src="/assets/images/vm/systemdsgn.png" /></p>
+
+<p>Basically, we have api to upload script and python code, and then api to run the uploaded code, another api to fetch job status and logs. Whenever file is uploaded it is stored in a filestorage, and when the user initiate the <code class="language-plaintext highlighter-rouge">runscript</code> api, the workers picks up the file via it script ID, create a job, initializes and run firecracker by mounting the uploaded file into the vm’s linux filesystem.We use an SQLite database to store the job status.</p>
+
+<p>If we zoom into the system here is what we have:</p>
+
+<p><img src="/assets/images/vm/arch.png" /></p>
+
+<h2 id="linux-vm-image-and-filesystem">Linux vm image and filesystem</h2>
+
+<p>In the image above we have the <code class="language-plaintext highlighter-rouge">Firecracker VM runner</code> pointing to <code class="language-plaintext highlighter-rouge">VM Images</code> and that points to <code class="language-plaintext highlighter-rouge">Linux kernel</code> and <code class="language-plaintext highlighter-rouge">Root filesystem</code>. To run the VM, we need to decide on the type of linux kernel and filesystem we want.</p>
+
+<p>The project includes a script <code class="language-plaintext highlighter-rouge">build_rootfs.sh</code>, used to generate this two entities. Firs, we fetched a compactible linux kernel prebuilt for firecracker</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">set</span> <span class="nt">-e</span>
+
+<span class="nv">WORK_DIR</span><span class="o">=</span><span class="si">$(</span><span class="nb">mktemp</span> <span class="nt">-d</span><span class="si">)</span>
+wget https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin <span class="nt">-O</span> <span class="nv">$WORK_DIR</span>/vmlinux
+<span class="nb">chmod</span> +x <span class="nv">$WORK_DIR</span>/vmlinux
+</code></pre></div></div>
+
+<p>We have the kernel now. The next step is to create a minimal filesystem structure and populate it with essential utilities. We install Busybox; a single binary that provides hundreds of standard Unix tools through symlinks:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir</span> <span class="nt">-p</span> rootfs/<span class="o">{</span>bin,sbin,etc,proc,sys,dev,tmp,usr/local/lib,usr/local/bin<span class="o">}</span>
+wget https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox <span class="nt">-O</span> rootfs/bin/busybox
+<span class="nb">chmod</span> +x rootfs/bin/busybox
+
+<span class="c"># Create symlinks for all BusyBox utilities</span>
+<span class="k">for </span>applet <span class="k">in</span> <span class="si">$(</span>./bin/busybox <span class="nt">--list</span><span class="si">)</span><span class="p">;</span> <span class="k">do
+    </span><span class="nb">ln</span> <span class="nt">-sf</span> /bin/busybox bin/<span class="nv">$applet</span> 2&gt;/dev/null <span class="o">||</span> <span class="nb">true
+</span><span class="k">done</span>
+</code></pre></div></div>
+
+<p>For pyhton support and user code execution, we install a static python build and create an <code class="language-plaintext highlighter-rouge">init</code> script that handles mounting and running user code:</p>
+
+<blockquote>
+  <p>I spent considerable time getting Python to work properly. One of the main challenges was finding a small yet fully functional standalone Python installation, as many of the options I tested had limited feature support. This experience helped me understand why many edge worker environments (like Cloudflare Pages with Node.js) only support a subset of features from the installed programming languages.</p>
+</blockquote>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Python installation (shortened)</span>
+wget https://github.com/indygreg/python-build-standalone/releases/download/20240107/cpython-3.11.7+20240107-x86_64-unknown-linux-musl-install_only.tar.gz <span class="nt">-O</span> python.tar.gz
+<span class="nb">cp</span> <span class="nv">$PYTHON_BIN</span> rootfs/bin/python3.11
+
+<span class="c"># Init script - the VM's first process</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> rootfs/init <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
+#!/bin/sh
+# Mount essential filesystems
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+
+# Mount user script drive (/dev/vdb) and run scripts
+mkdir -p /mnt/script
+mount /dev/vdb /mnt/script
+
+# Execute all scripts found in the mounted directory
+for script in /mnt/script/*; do
+    if [ -f "</span><span class="se">\$</span><span class="sh">script" ]; then
+        case "</span><span class="se">\$</span><span class="sh">{script##*.}" in
+            py) python3 "</span><span class="se">\$</span><span class="sh">script" ;;
+            sh|bash) sh "</span><span class="se">\$</span><span class="sh">script" ;;
+        esac
+    fi
+done
+
+# Shutdown when done
+poweroff -f
+</span><span class="no">EOF
+</span><span class="nb">chmod</span> +x rootfs/init
+</code></pre></div></div>
+<blockquote>
+  <p>The <code class="language-plaintext highlighter-rouge">/dev/vdb</code> device is a key concept I learned;  it’s the second virtual disk that gets attached to the VM at runtime. In Linux, disk devices follow a naming pattern: /dev/vd[a-z]. The first disk (<code class="language-plaintext highlighter-rouge">/dev/vda</code>) contains our root filesystem, while <code class="language-plaintext highlighter-rouge">/dev/vdb</code> contains the user code to execute. By mounting this second drive at runtime, we maintain a clean separation between the VM system and the code it runs.</p>
+</blockquote>
+
+<p>Finally we package everything into an <code class="language-plaintext highlighter-rouge">ext4</code> filesystem</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">dd </span><span class="k">if</span><span class="o">=</span>/dev/zero <span class="nv">of</span><span class="o">=</span><span class="nv">$WORK_DIR</span>/rootfs.ext4 <span class="nv">bs</span><span class="o">=</span>1M <span class="nv">count</span><span class="o">=</span>600
+mkfs.ext4 <span class="nt">-F</span> <span class="nv">$WORK_DIR</span>/rootfs.ext4
+
+<span class="c"># Mount and copy files</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /tmp/rootfs_mount
+<span class="nb">sudo </span>mount <span class="nt">-o</span> loop <span class="nv">$WORK_DIR</span>/rootfs.ext4 /tmp/rootfs_mount
+<span class="nb">sudo cp</span> <span class="nt">-a</span> <span class="nv">$WORK_DIR</span>/rootfs/<span class="k">*</span> /tmp/rootfs_mount/
+<span class="nb">sudo </span>umount /tmp/rootfs_mount
+
+<span class="nb">sudo cp</span> <span class="nv">$WORK_DIR</span>/vmlinux <span class="nv">$OUTPUT_DIR</span>/
+<span class="nb">sudo cp</span> <span class="nv">$WORK_DIR</span>/rootfs.ext4 <span class="nv">$OUTPUT_DIR</span>/
+</code></pre></div></div>
+<p>This taught me how Linux filesystem images are created:</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">dd</code> creates a 600MB empty file filled with zeros</li>
+  <li><code class="language-plaintext highlighter-rouge">mkfs.ext4</code> formats it as an ext4 filesystem</li>
+  <li><code class="language-plaintext highlighter-rouge">mount -o loop</code> lets us mount a file as if it were a physical device and make its contents accessible through the <code class="language-plaintext highlighter-rouge">/tmp/rootfs_mount</code> directory</li>
+  <li>We copy our prepared files into it</li>
+  <li>Finally umount detaches the filesystem</li>
+</ol>
+
+<p>At the end of running the <code class="language-plaintext highlighter-rouge">build_rootfs.sh</code>, we should have two files: <code class="language-plaintext highlighter-rouge">vmlinux</code> and <code class="language-plaintext highlighter-rouge">rootfs.ext4</code>. These will be passed into Firecracker.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fcCfg</span> <span class="o">:=</span> <span class="n">firecracker</span><span class="o">.</span><span class="n">Config</span><span class="p">{</span>
+		<span class="n">SocketPath</span><span class="o">:</span>      <span class="n">socketPath</span><span class="p">,</span>
+		<span class="n">KernelImagePath</span><span class="o">:</span> <span class="s">"pwd/vmlinux"</span><span class="p">,</span>
+		<span class="n">Drives</span><span class="o">:</span>          <span class="p">[]</span><span class="n">models</span><span class="o">.</span><span class="n">Drive</span><span class="p">{</span>
+            <span class="p">{</span>
+                <span class="n">DriveID</span><span class="o">:</span>      <span class="n">firecracker</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="s">"rootfs"</span><span class="p">),</span>
+                <span class="n">PathOnHost</span><span class="o">:</span>   <span class="n">firecracker</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="s">"pwd/rootfs.ext4"</span><span class="p">),</span>
+                <span class="n">IsRootDevice</span><span class="o">:</span> <span class="n">firecracker</span><span class="o">.</span><span class="n">Bool</span><span class="p">(</span><span class="no">true</span><span class="p">),</span>
+                <span class="n">IsReadOnly</span><span class="o">:</span>   <span class="n">firecracker</span><span class="o">.</span><span class="n">Bool</span><span class="p">(</span><span class="no">false</span><span class="p">),</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="n">DriveID</span><span class="o">:</span>      <span class="n">firecracker</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="s">"script"</span><span class="p">),</span>
+                <span class="n">PathOnHost</span><span class="o">:</span>   <span class="n">firecracker</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">scriptDrive</span><span class="p">),</span>
+                <span class="n">IsRootDevice</span><span class="o">:</span> <span class="n">firecracker</span><span class="o">.</span><span class="n">Bool</span><span class="p">(</span><span class="no">false</span><span class="p">),</span>
+                <span class="n">IsReadOnly</span><span class="o">:</span>   <span class="n">firecracker</span><span class="o">.</span><span class="n">Bool</span><span class="p">(</span><span class="no">true</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+		<span class="n">MachineCfg</span><span class="o">:</span> <span class="n">models</span><span class="o">.</span><span class="n">MachineConfiguration</span><span class="p">{</span>
+			<span class="n">VcpuCount</span><span class="o">:</span>  <span class="n">firecracker</span><span class="o">.</span><span class="n">Int64</span><span class="p">(</span><span class="m">1</span><span class="p">),</span>
+			<span class="n">MemSizeMib</span><span class="o">:</span> <span class="n">firecracker</span><span class="o">.</span><span class="n">Int64</span><span class="p">(</span><span class="m">128</span><span class="p">),</span>
+		<span class="p">},</span>
+		<span class="n">JailerCfg</span><span class="o">:</span>         <span class="no">nil</span><span class="p">,</span>
+		<span class="n">NetworkInterfaces</span><span class="o">:</span> <span class="n">networkInterfaces</span><span class="p">,</span>
+		<span class="n">LogFifo</span><span class="o">:</span>           <span class="n">fifoPath</span><span class="p">,</span>
+		<span class="n">MetricsFifo</span><span class="o">:</span>       <span class="n">metricsPath</span><span class="p">,</span>
+		<span class="n">LogLevel</span><span class="o">:</span>          <span class="s">"Debug"</span><span class="p">,</span>
+		<span class="n">KernelArgs</span><span class="o">:</span>        <span class="s">"console=ttyS0 reboot=k panic=1 pci=off init=/init"</span><span class="p">,</span>
+	<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="scriptdrive-and-kernelargs">ScriptDrive and KernelArgs</h3>
+
+<p>In the <code class="language-plaintext highlighter-rouge">fcCfg</code> confif we specify a field called <code class="language-plaintext highlighter-rouge">Drives</code>. The first drive in the list represent <code class="language-plaintext highlighter-rouge">/dev/vda</code> which is the root filesystem we created in <code class="language-plaintext highlighter-rouge">build_rootfs.sh</code>. The second drive is the <code class="language-plaintext highlighter-rouge">/dev/vdb</code>. Recall we previously mentioned <code class="language-plaintext highlighter-rouge">/dev/vdb</code>, and used this command <code class="language-plaintext highlighter-rouge">mount /dev/vdb /mnt/script</code>; this makes the content of this device available via <code class="language-plaintext highlighter-rouge">/mnt/script</code>.</p>
+
+<p>Whenever we run the uploaded script, we fetch it from storage,format it to generate <code class="language-plaintext highlighter-rouge">scriptdrive</code> which is then passed to fcCfg config.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">scriptDrive</span> <span class="o">:=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">Join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">TempDir</span><span class="p">(),</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"script-%s.ext4"</span><span class="p">,</span> <span class="n">vmID</span><span class="p">))</span>
+<span class="n">err</span> <span class="o">=</span> <span class="n">createExt4ImageWithScript</span><span class="p">(</span><span class="n">scriptPath</span><span class="p">,</span> <span class="n">scriptDrive</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>What the code does is similar to what w’ve discussed before:</p>
+
+<ul>
+  <li>
+    <p>Create an empty disk file: Uses truncate to create a 10MB empty file with a unique name like <code class="language-plaintext highlighter-rouge">script-{UUID}.ext4</code></p>
+  </li>
+  <li>
+    <p>Format the file as ext4: Runs <code class="language-plaintext highlighter-rouge">mkfs.ext4</code> to turn this empty file into a proper Linux filesystem</p>
+  </li>
+  <li>
+    <p>Mount the filesystem: Creates a temporary mount point and uses the <code class="language-plaintext highlighter-rouge">mount -o loop</code> command to make the filesystem accessible</p>
+  </li>
+  <li>
+    <p>Copy the user script: Takes the original script file and places it at the root of this newly mounted filesystem</p>
+  </li>
+  <li>
+    <p>Prepare for VM use: Unmounts the filesystem and attaches it to the VM as a second virtual disk <code class="language-plaintext highlighter-rouge">(/dev/vdb)</code></p>
+  </li>
+</ul>
+
+<p>When the VM boots, its init script will mount this second disk at <code class="language-plaintext highlighter-rouge">/mnt/script</code>, making the user’s script available for execution.</p>
+
+<p>For the <code class="language-plaintext highlighter-rouge">kernelArgs: "console=ttyS0 reboot=k panic=1 pci=off init=/init"</code>; <code class="language-plaintext highlighter-rouge">init=/init</code> specify the first program to run which contains the init file we created in <code class="language-plaintext highlighter-rouge">build_rootfs.sh</code>, it also responsible for running our uploaded code. And i so learned about PCI bus scanning and firecracker does not use it, hence diabled <code class="language-plaintext highlighter-rouge">pci=off</code></p>
+
+<h2 id="networking">Networking</h2>
+
+<p>This network part is a refresher to this <a href="https://steveoni.github.io/network/2024/07/05/network-tunnel-in-rust.html">article</a> on vpn that i wrote last year.</p>
+
+<p>The firecracker <code class="language-plaintext highlighter-rouge">networkInterfaces</code> configuration requires a MAC address and a TAP interface name, so we need to create both:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">networkInterfaces</span> <span class="o">=</span> <span class="nb">append</span><span class="p">(</span><span class="n">networkInterfaces</span><span class="p">,</span> <span class="n">firecracker</span><span class="o">.</span><span class="n">NetworkInterface</span><span class="p">{</span>
+    <span class="n">StaticConfiguration</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">firecracker</span><span class="o">.</span><span class="n">StaticNetworkConfiguration</span><span class="p">{</span>
+        <span class="n">MacAddress</span><span class="o">:</span>  <span class="n">guestMac</span><span class="p">,</span>
+        <span class="n">HostDevName</span><span class="o">:</span> <span class="n">tapName</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">})</span>
+</code></pre></div></div>
+
+<p>For the guestMac, we have a function that generates a unicast and locally administered MAC address. It first creates a random 6-byte buffer, then ensures:</p>
+
+<ul>
+  <li>
+    <p>Bit 0 = 0 (indicating unicast)</p>
+  </li>
+  <li>
+    <p>Bit 1 = 1 (indicating locally administered)</p>
+  </li>
+</ul>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">buf</span><span class="p">[</span><span class="m">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">buf</span><span class="p">[</span><span class="m">0</span><span class="p">]</span> <span class="o">|</span> <span class="m">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="m">0xfe</span>
+</code></pre></div></div>
+
+<p>For the <code class="language-plaintext highlighter-rouge">tapName</code>, we created a tap interface , a bridge and how it can communicate to the internet throught the host default network interface:</p>
+
+<ul>
+  <li>Creates a virtual TAP device (e.g., fc-tap-abc123) using the Linux ip command</li>
+  <li>Sets up a bridge (fcbr0) with private IP address 192.168.100.1</li>
+  <li>Configures <code class="language-plaintext highlighter-rouge">NAT</code> and <code class="language-plaintext highlighter-rouge">IP</code> forwarding for internet access</li>
+</ul>
+
+<p>Once this is done, we also update the <code class="language-plaintext highlighter-rouge">KernelArgs</code> we add the following to configure the network before the <code class="language-plaintext highlighter-rouge">init</code> system :</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#ip=&lt;client-ip&gt;:&lt;server-ip&gt;:&lt;gateway-ip&gt;:&lt;netmask&gt;:&lt;hostname&gt;:&lt;device&gt;:&lt;autoconf&gt;
+kernelArgs += " ip=192.168.100.2::192.168.100.1:255.255.255.0::eth0:off"
+</code></pre></div></div>
+
+<p>Finally, when we talked about the <code class="language-plaintext highlighter-rouge">/init</code> file created in <code class="language-plaintext highlighter-rouge">build_rootfs.sh</code> i skipped this part:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ip link set eth0 up
+echo "nameserver 8.8.8.8" &gt; /etc/resolv.conf
+echo "nameserver 1.1.1.1" &gt;&gt; /etc/resolv.conf
+</code></pre></div></div>
+
+<ul>
+  <li>The VM has network connectivity through the TAP device and bridge</li>
+  <li>It has an IP address (192.168.100.2) and gateway (192.168.100.1)</li>
+  <li>But without DNS, it could only communicate using raw IP addresses</li>
+</ul>
+
+<p>By configuring Google’s DNS (8.8.8.8) and Cloudflare’s DNS (1.1.1.1), we give the VM the ability to resolve domain names. We use two different providers for redundancy; if one DNS service is unavailable, the system will try the other.</p>
+
+<h2 id="llm">LLM</h2>
+
+<p>I had the idea to build this with only a little knowledge of Firecracker or the Linux filesystem. But with the help of an LLM, I was able to gather the right learning resources and write better prompts. The LLM helped me find a list of standalone Python installers to use, and even when I couldn’t remember certain commands for network setup, a single prompt brought everything back.</p>
+
+<p>I believe that with a better understanding of what you’re building, you can really vibecode at a deeper level. My recommendation is always to first understand the requirements, read more about the domain, and let that shape how you write your prompts.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This started as a simple project for learning purposes, but it could actually grow into something much bigger. You could add user authentication and authorization, use eBPF to monitor incoming and outgoing traffic, integrate WireGuard to access private networks, add APIs to adjust CPU and memory allocation, support more programming languages, and handle deployment.</p>
+
+<p>I was able to gain a foundational understanding of the Linux filesystem and KVMs. I’m still exploring areas like VirtIO, PCI, and related concepts—and I might write more about these in future articles.</p>
+
+<h2 id="resources">Resources</h2>
+<ul>
+  <li>link to code: https://github.com/steveoni/microvm</li>
+  <li>Firecracker docs https://github.com/firecracker-microvm/firecracker/tree/main/docs</li>
+  <li>especially the getting started https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <a href="/blog">← all writing</a>
+    
+    <a href="/blog">microvm</a>
+    
+  </footer>
+</article>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 Stephen Oni</p>
+    <div class="footer-links">
+      <a href="https://github.com/steveoni" target="_blank" rel="noopener">github</a>
+      <a href="https://twitter.com/steveoni" target="_blank" rel="noopener">twitter</a>
+      <a href="https://linkedin.com/in/stephen-oni" target="_blank" rel="noopener">linkedin</a>
+      <a href="mailto:stephenoni2@gmail.com">email</a>
+    </div>
+  </footer>
+
+</body>
+</html>
