@@ -8,7 +8,7 @@ groups:
         description: "Open-source JavaScript library providing high-performance, Pandas-like data structures for manipulating and processing structured data in the browser and Node.js. \n\nCo-created the project and contributed to the core dataframe data structure and it operations, plus the general architecture and design of the library"
         url: "https://github.com/javascriptdata/danfojs"
         image: "/assets/images/projects/danfojs2.png"
-        stars: "5.k"
+        stars: "5.1k"
         contrib: false
         tags: ["javascript", "typescript", "data-science", "pandas"]
         links:
@@ -62,7 +62,7 @@ groups:
         description: "The world's leading open-source data portal platform — used by governments and organisations globally to publish and share datasets. \n\nContributed to adding new features, python 2 to 3 migration, bug fixes, documentation and creating varieties of extensions to improve data publishing workflows."
         url: "https://github.com/ckan/ckan"
         image: "/assets/images/projects/ckan.png"
-        stars: "4.4k"
+        stars: "5k"
         contrib: true
         tags: ["python", "open-data", "flask", "postgresql", "redis"]
         links:
