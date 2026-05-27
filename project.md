@@ -2,6 +2,38 @@
 layout: projects
 title: "Projects"
 groups:
+  - name: "Agentic AI"
+    projects:
+      - name: "Compno"
+        description: "An agentic writing platform where AI agents learn an organization's writing style from docs and links, then draft, review, and refine documents in the right voice. Built around style inference, multi-agent collaboration, and human-in-the-loop editing."
+        url: "https://compno.brassinai.com/"
+        image: "/assets/images/projects/compno.png"
+        contrib: false
+        tags: ["agentic-ai", "writing", "multi-agent", "style-inference", "collaboration"]
+        links:
+          - label: "website"
+            url: "https://compno.brassinai.com/"
+
+      - name: "Debrief"
+        description: "A meeting intelligence system that turns recordings into searchable transcripts, decisions, action items, and highlight clips, then feeds that context into downstream strategy workflows. Built for automated ingestion, summarization, speaker attribution, and knowledge retrieval."
+        url: "https://debrief.brassinai.com/"
+        image: "/assets/images/projects/debrief.png"
+        contrib: false
+        tags: ["agentic-ai", "meeting-intelligence", "transcription", "knowledge-base", "retrieval"]
+        links:
+          - label: "website"
+            url: "https://debrief.brassinai.com/"
+
+      - name: "joboard"
+        description: "An agentic workflow for sourcing, ranking, and triaging job listings into a single dashboard. Built to automate data collection, summarize roles, prioritize opportunities based on user intent, and support the full job search process with agents that help answer technical questions, rewrite multiple CVs for different roles, manage applications, and prepare for interviews."
+        url: "https://jobboard-seven-beta.vercel.app/"
+        image: "/assets/images/projects/ludo.png"
+        contrib: false
+        tags: ["agentic-ai", "workflow", "automation", "search", "sserver-sent-events"]
+        links:
+          - label: "website"
+            url: "https://jobboard-seven-beta.vercel.app/"
+
   - name: "JavaScript · Data Science · ML on the Web"
     projects:
       - name: "Danfo.js"

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,20 +13,30 @@
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="A novice’s dance amidst binary symphony" />
 <meta property="og:description" content="A novice’s dance amidst binary symphony" />
-<link rel="canonical" href="http://localhost:4000/project/" />
-<meta property="og:url" content="http://localhost:4000/project/" />
+<link rel="canonical" href="http://localhost:4003/project/" />
+<meta property="og:url" content="http://localhost:4003/project/" />
 <meta property="og:site_name" content="Stephen Oni" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Projects" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebPage","author":{"@type":"Person","name":"Stephen Oni"},"description":"A novice’s dance amidst binary symphony","headline":"Projects","url":"http://localhost:4000/project/"}</script>
+{"@context":"https://schema.org","@type":"WebPage","author":{"@type":"Person","name":"Stephen Oni"},"description":"A novice’s dance amidst binary symphony","headline":"Projects","url":"http://localhost:4003/project/"}</script>
 <!-- End Jekyll SEO tag -->
 
   <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet" />
+  <!-- Apply theme before first paint to avoid flash -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (!t) {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <style>
     /* ── tokens ───────────────────────────────────────────── */
     :root {
@@ -40,7 +50,23 @@
       --link:      #a8c5a0;
       --link-hover:#c8e5c0;
       --code-bg:   #131315;
+      --code-color:#c3e88d;  /* inline code token colour */
       --max-w:     820px;
+    }
+
+    /* ── light mode overrides ─────────────────────────────── */
+    [data-theme="light"] {
+      --bg:        #f7f7f5;
+      --surface:   #eeeeeb;
+      --border:    #d8d8d4;
+      --text:      #1a1a18;
+      --muted:     #666662;
+      --subtle:    #adadaa;
+      --accent:    #4a7a44;   /* darker sage for contrast on light bg */
+      --link:      #4a7a44;
+      --link-hover:#3a6634;
+      --code-bg:   #eeeeeb;
+      --code-color:#3a7034;
     }
 
     /* ── reset ────────────────────────────────────────────── */
@@ -208,6 +234,80 @@
       padding-bottom: 0.5rem;
       border-bottom: 1px solid var(--border);
     }
+
+    /* ── theme toggle button ──────────────────────────────── */
+    .theme-toggle {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.2rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      line-height: 1;
+      margin-left: 0.25rem;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .theme-toggle:hover { color: var(--text); }
+    .theme-toggle svg { width: 1rem; height: 1rem; display: block; }
+    /* show the right icon per theme */
+    [data-theme="dark"]  .theme-toggle .icon-moon { display: none; }
+    [data-theme="light"] .theme-toggle .icon-sun  { display: none; }
+
+    /* ── light mode syntax highlight overrides ────────────── */
+    [data-theme="light"] .highlight { background: var(--code-bg); }
+    [data-theme="light"] .highlight .c,
+    [data-theme="light"] .highlight .cm,
+    [data-theme="light"] .highlight .c1,
+    [data-theme="light"] .highlight .cs  { color: #5a7850; font-style: italic; }
+    [data-theme="light"] .highlight .k,
+    [data-theme="light"] .highlight .kd,
+    [data-theme="light"] .highlight .kn,
+    [data-theme="light"] .highlight .kp,
+    [data-theme="light"] .highlight .kr,
+    [data-theme="light"] .highlight .kt  { color: #7c3dab; }
+    [data-theme="light"] .highlight .n,
+    [data-theme="light"] .highlight .nb,
+    [data-theme="light"] .highlight .ni,
+    [data-theme="light"] .highlight .nl,
+    [data-theme="light"] .highlight .nn,
+    [data-theme="light"] .highlight .nx  { color: #1a1a18; }
+    [data-theme="light"] .highlight .na  { color: #1a5eb5; }
+    [data-theme="light"] .highlight .nf,
+    [data-theme="light"] .highlight .fm,
+    [data-theme="light"] .highlight .py  { color: #1a5eb5; }
+    [data-theme="light"] .highlight .nc,
+    [data-theme="light"] .highlight .nd,
+    [data-theme="light"] .highlight .ne  { color: #a06010; }
+    [data-theme="light"] .highlight .s,
+    [data-theme="light"] .highlight .s1,
+    [data-theme="light"] .highlight .s2,
+    [data-theme="light"] .highlight .sb,
+    [data-theme="light"] .highlight .sc,
+    [data-theme="light"] .highlight .sd,
+    [data-theme="light"] .highlight .sh,
+    [data-theme="light"] .highlight .si,
+    [data-theme="light"] .highlight .sx,
+    [data-theme="light"] .highlight .sr,
+    [data-theme="light"] .highlight .ss  { color: #387030; }
+    [data-theme="light"] .highlight .m,
+    [data-theme="light"] .highlight .mf,
+    [data-theme="light"] .highlight .mh,
+    [data-theme="light"] .highlight .mi,
+    [data-theme="light"] .highlight .mo,
+    [data-theme="light"] .highlight .il  { color: #b84010; }
+    [data-theme="light"] .highlight .o,
+    [data-theme="light"] .highlight .ow  { color: #0078a0; }
+    [data-theme="light"] .highlight .p,
+    [data-theme="light"] .highlight .pi  { color: #0078a0; }
+    [data-theme="light"] .highlight .err { color: #cc0000; background: none; }
+    [data-theme="light"] .highlight .cp  { color: #a06010; }
+    [data-theme="light"] .highlight .gh,
+    [data-theme="light"] .highlight .gu  { color: var(--muted); font-weight: bold; }
+    [data-theme="light"] .highlight .gd  { color: #cc0000; background: rgba(200,0,0,0.07); display: block; }
+    [data-theme="light"] .highlight .gi  { color: #228822; background: rgba(30,140,30,0.08); display: block; }
+    [data-theme="light"] .highlight[data-lang]::before { color: var(--subtle); }
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-W9SDX6RR77"></script>
@@ -229,6 +329,17 @@
       <a href="/blog" >writing</a>
       <a href="/project" class="active">projects</a>
     </div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle colour theme">
+      <!-- sun — shown in dark mode; clicking switches to light -->
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+      <!-- moon — shown in light mode; clicking switches to dark -->
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
   </nav>
 
   <main>
@@ -303,8 +414,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.2rem;
+    color: var(--accent);
   }
-  .proj-meta .pm-stars svg { opacity: 0.5; }
+  .proj-meta .pm-stars svg { opacity: 1; }
   .proj-contrib {
     font-size: 0.68rem;
     color: var(--accent);
@@ -349,20 +461,19 @@
 
   /* ── image side ────────────────────────────────────────── */
   .proj-img {
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    background: var(--surface);
     aspect-ratio: 16/9;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .proj-img img {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
     object-fit: contain;
-    border-radius: 0;
+    border-radius: 10px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
     margin: 0;
     display: block;
   }
@@ -383,12 +494,152 @@
     text-align: center;
   }
   .proj-img-placeholder svg { opacity: 0.3; }
+
 </style>
 
 <div class="projects-intro">
   <h1>Projects</h1>
   <p>Most of the projects listed here are open source, giving me the opportunity to explore and share knowledge with a community of people interested in similar topics. I have explored topics and ideas around data publishing and orchestration, data science on the web, networking, interfaces, browser and IDE extensions, system programming, and more.</p>
 
+</div>
+
+
+
+<p class="cat-label">Agentic AI</p>
+
+
+  
+  
+
+<div class="proj-row ">
+  <div class="proj-body">
+    <div class="proj-title">
+      <a href="https://compno.brassinai.com/" target="_blank" rel="noopener">Compno</a>
+    </div>
+    <div class="proj-meta">
+      
+      
+    </div>
+    <div class="proj-desc">An agentic writing platform where AI agents learn an organization's writing style from docs and links, then draft, review, and refine documents in the right voice. Built around style inference, multi-agent collaboration, and human-in-the-loop editing.</div>
+    
+    <div class="proj-tags">
+      
+      <span class="proj-tag">agentic-ai</span>
+      
+      <span class="proj-tag">writing</span>
+      
+      <span class="proj-tag">multi-agent</span>
+      
+      <span class="proj-tag">style-inference</span>
+      
+      <span class="proj-tag">collaboration</span>
+      
+    </div>
+    
+    
+    <div class="proj-links">
+      
+      <a href="https://compno.brassinai.com/" target="_blank" rel="noopener">website</a>
+      
+    </div>
+    
+  </div>
+
+  <div class="proj-img">
+    
+    <img src="/assets/images/projects/compno.png" alt="Compno screenshot" loading="lazy" />
+    
+  </div>
+</div>
+
+
+  
+  
+
+<div class="proj-row flip">
+  <div class="proj-body">
+    <div class="proj-title">
+      <a href="https://debrief.brassinai.com/" target="_blank" rel="noopener">Debrief</a>
+    </div>
+    <div class="proj-meta">
+      
+      
+    </div>
+    <div class="proj-desc">A meeting intelligence system that turns recordings into searchable transcripts, decisions, action items, and highlight clips, then feeds that context into downstream strategy workflows. Built for automated ingestion, summarization, speaker attribution, and knowledge retrieval.</div>
+    
+    <div class="proj-tags">
+      
+      <span class="proj-tag">agentic-ai</span>
+      
+      <span class="proj-tag">meeting-intelligence</span>
+      
+      <span class="proj-tag">transcription</span>
+      
+      <span class="proj-tag">knowledge-base</span>
+      
+      <span class="proj-tag">retrieval</span>
+      
+    </div>
+    
+    
+    <div class="proj-links">
+      
+      <a href="https://debrief.brassinai.com/" target="_blank" rel="noopener">website</a>
+      
+    </div>
+    
+  </div>
+
+  <div class="proj-img">
+    
+    <img src="/assets/images/projects/debrief.png" alt="Debrief screenshot" loading="lazy" />
+    
+  </div>
+</div>
+
+
+  
+  
+
+<div class="proj-row ">
+  <div class="proj-body">
+    <div class="proj-title">
+      <a href="https://jobboard-seven-beta.vercel.app/" target="_blank" rel="noopener">joboard</a>
+    </div>
+    <div class="proj-meta">
+      
+      
+    </div>
+    <div class="proj-desc">An agentic workflow for sourcing, ranking, and triaging job listings into a single dashboard. Built to automate data collection, summarize roles, prioritize opportunities based on user intent, and support the full job search process with agents that help answer technical questions, rewrite multiple CVs for different roles, manage applications, and prepare for interviews.</div>
+    
+    <div class="proj-tags">
+      
+      <span class="proj-tag">agentic-ai</span>
+      
+      <span class="proj-tag">workflow</span>
+      
+      <span class="proj-tag">automation</span>
+      
+      <span class="proj-tag">search</span>
+      
+      <span class="proj-tag">sserver-sent-events</span>
+      
+    </div>
+    
+    
+    <div class="proj-links">
+      
+      <a href="https://jobboard-seven-beta.vercel.app/" target="_blank" rel="noopener">website</a>
+      
+    </div>
+    
+  </div>
+
+  <div class="proj-img">
+    
+    <img src="/assets/images/projects/ludo.png" alt="joboard screenshot" loading="lazy" />
+    
+  </div>
 </div>
 
 
@@ -947,5 +1198,17 @@ Helped with the initial project kickstart and idea consolidation, and contribute
     </div>
   </footer>
 
+  <script>
+    (function () {
+      var btn = document.getElementById('themeToggle');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var current = document.documentElement.getAttribute('data-theme') || 'dark';
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+      });
+    })();
+  </script>
 </body>
 </html>

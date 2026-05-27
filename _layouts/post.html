@@ -41,9 +41,10 @@ layout: default
 
   /* ── post body typography ─────────────────────────────── */
   .post-content {
-    /* slightly warmer text for long-form reading */
+    /* slightly warmer text for long-form reading (dark mode) */
     --text: #ebebе7;
   }
+  [data-theme="light"] .post-content { --text: var(--text); }
   .post-content > * + * { margin-top: 0; }
 
   .post-content p {
@@ -94,14 +95,14 @@ layout: default
     margin: 1.5rem 0;
   }
   .post-content blockquote p {
-    color: #b4b4b0;   /* AA on dark bg */
+    color: var(--muted);
     font-style: italic;
     margin: 0;
   }
 
-  /* inline code — ensure contrast */
+  /* inline code — use themed token colour */
   .post-content code {
-    color: #c3e88d;   /* soft lime — legible on #131315 */
+    color: var(--code-color);
   }
 
   /* ── images — accessible & constrained ───────────────── */
