@@ -1,0 +1,107 @@
+{% assign profile = site.data.profile.person %}
+{% assign page_name = page.title | default: site.title %}
+{% assign page_description = page.description | default: site.description %}
+{% assign page_url = page.url | absolute_url %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "@id": "{{ site.url }}#person",
+  "name": {{ profile.name | jsonify }},
+  "alternateName": {{ profile.alternate_name | jsonify }},
+  "url": {{ site.url | jsonify }},
+  "jobTitle": {{ profile.job_title | jsonify }},
+  "description": {{ profile.description | jsonify }},
+  "email": {{ profile.email | prepend: "mailto:" | jsonify }},
+  "sameAs": {{ profile.same_as | jsonify }},
+  "knowsAbout": {{ profile.knows_about | jsonify }}
+}
+</script>
+
+{% if page.url == "/" %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  "@id": "{{ site.url }}#profile",
+  "url": {{ site.url | jsonify }},
+  "name": {{ page_name | jsonify }},
+  "description": {{ page_description | jsonify }},
+  "mainEntity": {
+    "@id": "{{ site.url }}#person"
+  }
+}
+</script>
+{% endif %}
+
+{% if page.layout == "projects" and page.groups %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "@id": "{{ page_url }}#collection",
+  "url": {{ page_url | jsonify }},
+  "name": {{ page_name | jsonify }},
+  "description": {{ page_description | jsonify }},
+  "about": {
+    "@id": "{{ site.url }}#person"
+  },
+  "mainEntity": {
+    "@type": "ItemList",
+    "name": "Software projects by Stephen Oni",
+    "itemListElement": [
+      {% assign item_position = 0 %}
+      {% assign emitted_project = false %}
+      {% for group in page.groups %}
+        {% for project in group.projects %}
+          {% assign item_position = item_position | plus: 1 %}
+          {% if project.url contains "http" %}
+            {% assign project_url = project.url %}
+          {% else %}
+            {% assign project_url = project.url | absolute_url %}
+          {% endif %}
+          {% if emitted_project %},{% endif %}
+          {
+            "@type": "ListItem",
+            "position": {{ item_position }},
+            "item": {
+              "@type": "CreativeWork",
+              "name": {{ project.name | jsonify }},
+              "description": {{ project.description | strip_newlines | replace: "  ", " " | jsonify }},
+              "url": {{ project_url | jsonify }},
+              {% if project.image %}
+              "image": {{ project.image | absolute_url | jsonify }},
+              {% endif %}
+              "keywords": {{ project.tags | join: ", " | jsonify }},
+              "creator": {
+                "@id": "{{ site.url }}#person"
+              }
+            }
+          }
+          {% assign emitted_project = true %}
+        {% endfor %}
+      {% endfor %}
+    ]
+  }
+}
+</script>
+{% endif %}
+
+{% if page.url == "/blog/" %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "@id": "{{ page_url }}#blog",
+  "url": {{ page_url | jsonify }},
+  "name": {{ page_name | jsonify }},
+  "description": {{ page_description | jsonify }},
+  "author": {
+    "@id": "{{ site.url }}#person"
+  },
+  "publisher": {
+    "@id": "{{ site.url }}#person"
+  }
+}
+</script>
+{% endif %}

@@ -1,0 +1,17 @@
+person:
+  name: "Stephen Oni"
+  alternate_name: "steveoni"
+  job_title: "Software and ML Engineer"
+  description: "Software and machine learning engineer building AI products, developer tools, and open-source systems."
+  email: "stephenoni2@gmail.com"
+  same_as:
+    - "https://github.com/steveoni"
+    - "https://www.linkedin.com/in/stephen-oni"
+    - "https://twitter.com/steveoni"
+    - "https://medium.com/@steveoni"
+  knows_about:
+    - "Machine learning systems"
+    - "Agentic AI"
+    - "Developer tools"
+    - "Systems programming"
+    - "Open-source software"

@@ -1,6 +1,7 @@
 ---
 layout: home
 title: "Stephen Oni"
+description: "Stephen Oni is a software engineer building agentic AI products, machine learning systems, developer tools, and open-source software with Rust, Go, TypeScript, and Python."
 featured_projects:
   - name: "Danfo.js"
     description: "An open source JavaScript library providing high performance, intuitive data structures for manipulating and processing structured data a Pandas-like API for the browser and Node.js."
@@ -24,5 +25,4 @@ featured_projects:
     stars: "5.2k"
     contrib: true
 ---
-
 

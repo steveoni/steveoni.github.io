@@ -1,6 +1,7 @@
 ---
 layout: projects
 title: "Projects"
+description: "Software and machine learning engineering projects by Stephen Oni."
 groups:
   - name: "Agentic AI"
     projects:
@@ -168,4 +169,4 @@ groups:
             url: "https://kbar.vercel.app/"
 ---
 
-Most of the projects listed here are open source, giving me the opportunity to explore and share knowledge with a community of people interested in similar topics. I have explored topics and ideas around data publishing and orchestration, data science on the web, networking, interfaces, browser and IDE extensions, system programming, and more.
+Most of the projects listed here are open source, reflecting how I like to work: exploring ideas in public and sharing what I learn with people interested in similar problems. Over the years, that has taken me through data publishing and orchestration, data science on the web, networking, interfaces, browser and IDE extensions, system programming, and machine learning systems.

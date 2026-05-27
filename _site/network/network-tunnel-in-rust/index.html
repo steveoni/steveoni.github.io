@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Building Network tunnel in Rust · Stephen Oni</title>
-  <meta name="description" content="A novice's dance amidst binary symphony" />
   <!-- Begin Jekyll SEO tag v2.8.0 -->
 <title>Building Network tunnel in Rust | Stephen Oni</title>
 <meta name="generator" content="Jekyll v4.4.1" />
@@ -23,6 +21,32 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Stephen Oni"},"dateModified":"2024-07-05T00:00:00+01:00","datePublished":"2024-07-05T00:00:00+01:00","description":"It all started from picking up wireguard white paper and trying to setup wireguard and see how it works.New words and concept here and there, then decided to build a simple network tunnel in rust just to understand some of the workflow of wireguard from user-space standpoint.","headline":"Building Network tunnel in Rust","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4003/network/network-tunnel-in-rust/"},"url":"http://localhost:4003/network/network-tunnel-in-rust/"}</script>
 <!-- End Jekyll SEO tag -->
+
+  
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "@id": "http://localhost:4003#person",
+  "name": "Stephen Oni",
+  "alternateName": "steveoni",
+  "url": "http://localhost:4003",
+  "jobTitle": "Software and ML Engineer",
+  "description": "Software and machine learning engineer building AI products, developer tools, and open-source systems.",
+  "email": "mailto:stephenoni2@gmail.com",
+  "sameAs": ["https://github.com/steveoni","https://www.linkedin.com/in/stephen-oni","https://twitter.com/steveoni","https://medium.com/@steveoni"],
+  "knowsAbout": ["Machine learning systems","Agentic AI","Developer tools","Systems programming","Open-source software"]
+}
+</script>
+
+
+
+
+
+
 
   <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -52,7 +76,7 @@
       --link-hover:#c8e5c0;
       --code-bg:   #131315;
       --code-color:#c3e88d;  /* inline code token colour */
-      --max-w:     820px;
+      --max-w:     1080px;
     }
 
     /* ── light mode overrides ─────────────────────────────── */
@@ -346,6 +370,11 @@
   <main>
     <style>
   /* ── post layout ──────────────────────────────────────── */
+  article {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
   .post-header {
     margin-bottom: 2.75rem;
     padding-bottom: 1.5rem;

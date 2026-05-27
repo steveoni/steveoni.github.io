@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% if page.title %}{{ page.title }} · {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
-  <meta name="description" content="{{ page.description | default: site.description }}" />
   {% seo %}
+  {% include structured-data.html %}
   <!-- DM Sans (body) + DM Mono (code) — relaxed, contemporary, unhurried -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -34,7 +33,7 @@
       --link-hover:#c8e5c0;
       --code-bg:   #131315;
       --code-color:#c3e88d;  /* inline code token colour */
-      --max-w:     820px;
+      --max-w:     1080px;
     }
 
     /* ── light mode overrides ─────────────────────────────── */

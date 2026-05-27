@@ -1,9 +1,10 @@
-url: https://steveoni.github.io/
+url: https://steveoni.github.io
 baseurl: ""
+lang: en-US
 
 title: Stephen Oni
 author: Stephen Oni
-description: A novice's dance amidst binary symphony
+description: Software engineer focused on agentic AI, machine learning systems, developer tools, systems programming, and open-source software.
 
 markdown: kramdown
 highlighter: rouge
@@ -23,11 +24,20 @@ defaults:
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
+  - jekyll-sitemap
 
 twitter_username: steveoni
 github_username: steveoni
 linkedin_username: stephen-oni
 email: stephenoni2@gmail.com
+social:
+  name: Stephen Oni
+  links:
+    - https://steveoni.github.io/
+    - https://github.com/steveoni
+    - https://www.linkedin.com/in/stephen-oni
+    - https://twitter.com/steveoni
+    - https://medium.com/@steveoni
 show_excerpts: true
 google_analytics: G-W9SDX6RR77
 
