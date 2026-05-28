@@ -172,7 +172,7 @@ For the `kernelArgs: "console=ttyS0 reboot=k panic=1 pci=off init=/init"`; `init
 
 ## Networking
 
-This network part is a refresher to this [article](https://steveoni.github.io/network/2024/07/05/network-tunnel-in-rust.html) on vpn that i wrote last year.
+This network part is a refresher to this [article](https://steveoni.com/network/2024/07/05/network-tunnel-in-rust.html) on vpn that i wrote last year.
 
 The firecracker `networkInterfaces` configuration requires a MAC address and a TAP interface name, so we need to create both:
 
@@ -240,6 +240,5 @@ I was able to gain a foundational understanding of the Linux filesystem and KVMs
 - link to code: https://github.com/steveoni/microvm
 - Firecracker docs https://github.com/firecracker-microvm/firecracker/tree/main/docs
 - especially the getting started https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md
-
 
 
